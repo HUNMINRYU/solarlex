@@ -99,6 +99,14 @@ API_TIMEOUT_SEC = 25
 # 한 프로세스가 동시에 부르는 Upstage API 수(서버는 워커 2개라 전체 최대 2배). 429가 나면 낮추세요.
 API_CONCURRENCY = int(os.environ.get("API_CONCURRENCY", "4"))
 
+# 답 문체 다듬기(11/20 실험, 둘 다 기본은 끔 = 운영 서버와 같은 동작).
+# USE_PLAIN: 답 본문의 표기만 코드로 바꿉니다('100분의 50'→'50%', '제7조 제1항 제7호'→'제7조 제1항'). 모델 호출은 그대로라
+#   인용은 달라지지 않습니다. 기존 답 127개에 적용: 41개가 바뀌고 내용 일치 판정이 바뀐 문항 0.
+# USE_PLAIN_PROMPT: 프롬프트로 법령 말투까지 풀어 쓰게 합니다. 4세트 재채점에서 함정 100%·인용은 비슷했지만
+#   내용 일치가 dev 97→92%, holdout 93→87%로 내려가(기준값·질문자 수치를 빼먹음) 쓰지 않습니다.
+USE_PLAIN = os.environ.get("USE_PLAIN", "0") == "1"
+USE_PLAIN_PROMPT = os.environ.get("USE_PLAIN_PROMPT", "0") == "1"
+
 # 오프라인 시연 모드: 발표장 네트워크가 끊겨 Upstage API를 못 부를 때 노트북에서 DEMO_OFFLINE=1로 서버를 띄우면
 # 시연 화면(/demo/ask)이 미리 저장한 실제 응답(demo.py cache로 생성)을 '저장된 답변' 표시와 함께 돌려줍니다.
 # 채점용 /ask에는 영향이 없습니다.

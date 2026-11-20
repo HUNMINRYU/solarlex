@@ -629,7 +629,7 @@ def _generate(question, hits, note=None):
         user += f"\n\n[주의]\n{note}"
     def ask():
         return upstage.chat(
-            [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}],
+            [{"role": "system", "content": SYSTEM + (PLAIN_RULES if config.USE_PLAIN_PROMPT else "")}, {"role": "user", "content": user}],
             response_format=SCHEMA, reasoning_effort=config.ANSWER_REASONING or None)
 
     for _ in range(2):   # 답이 중간에 잘려 JSON이 깨지면 다시 부릅니다(dev D09). 두 번 연달아 깨진 적이 있어 세 번까지(X03, 2026-11-19)
@@ -697,6 +697,29 @@ def answer(question):
 
 
 EVIDENCE_NO = re.compile(r"근거\s?(\d+)")
+
+
+PLAIN_RULES = """
+- 쉬운 말(answer에만 적용, claims·check는 그대로): 비율은 '100분의 50'이 아니라 '50%'로 쓴다.
+  호·목 번호('제7호', '다목')는 answer에 쓰지 않고 조·항까지만 쓴다. 조례 이름은 처음 한 번만 쓴다.
+  법령 말투는 시민이 쓰는 말로 푼다(예: '감면한다'→'할인됩니다'·'면제됩니다', '부과·징수한다'→'내야 합니다', '소지자'→'가진 사람').
+  말투만 바꾸고 내용은 줄이지 않는다. 위 규칙대로 결론을 가른 기준값('…이상' 등), 질문자가 말한 수치, 다른 경우의 값(괄호), 단서는 모두 그대로 쓴다."""
+
+RATIO = re.compile(r"(\d[\d,]*)분의 ?(\d[\d,]*(?:\.\d+)?)")
+SUBITEM = re.compile(r"(제\d+조(?:의\d+)?(?: ?제\d+항)?) ?제\d+호(?:의\d+)?(?: ?[가-하]목)?")
+
+
+def plain_text(answer):
+    """답 본문의 표기만 쉬운 꼴로 바꿉니다(모델 호출 없음). '100분의 50'→'50%', '제7조 제1항 제7호'→'제7조 제1항'."""
+    def pct(m):
+        den, num = float(m.group(1).replace(",", "")), float(m.group(2).replace(",", ""))
+        if den not in (100, 1000) or not den:
+            return m.group(0)
+        v = num / den * 100
+        return f"{v:g}%"
+    answer = RATIO.sub(pct, answer)
+    answer = re.sub(r"%을(?=\s)", "%를", re.sub(r"%은(?=\s)", "%는", answer))   # '50%을' → '50%를'
+    return SUBITEM.sub(r"\1", answer)
 
 
 def name_evidence(answer, hits):
@@ -854,7 +877,10 @@ def _answer_once(question):
     evidence = list({h["label"]: {"label": h["label"], "text": originals.get(h["label"], h["text"]),
                                    "source_url": h["source_url"],
                                    "effective_date": h["effective_date"]} for h in used}.values())
-    return {"answer": fix_yes_no(question, name_evidence(out["answer"], hits)), "citation": citation,
+    text = name_evidence(out["answer"], hits)
+    if config.USE_PLAIN:
+        text = plain_text(text)
+    return {"answer": fix_yes_no(question, text), "citation": citation,
             "source_url": first["source_url"], "effective_date": first["effective_date"]}, evidence, False
 
 
