@@ -285,6 +285,45 @@ def pick_delegating(question, cands):
     return [cands[i - 1] for i in dict.fromkeys(ids) if isinstance(i, int) and 1 <= i <= len(cands)][:2], target
 
 
+TOPIC_SCHEMA = {"type": "json_schema", "json_schema": {"name": "topic", "strict": True, "schema": {
+    "type": "object", "properties": {"asked": {"type": "string"}, "term": {"type": "string"}, "reason": {"type": "string"},
+                                     "covers": {"type": "boolean"}, "ids": {"type": "array", "items": {"type": "integer"}}},
+    "required": ["asked", "term", "reason", "covers", "ids"], "additionalProperties": False}}}
+
+
+def pick_topic(question, cands):
+    """질문이 묻는 대상(지원·요금·배상 등) 그 자체를 서울시 조례 조항이 직접 다루는지 가립니다. (다루는 조항 목록, 조문 용어 검색어)"""
+    import upstage
+    listing = "\n".join(f"[{i}] {h['label']}\n{h['text'].split(chr(10), 1)[-1][:400]}" for i, h in enumerate(cands, 1))
+    raw = upstage.chat([
+        {"role": "system", "content": (
+            "너는 서울특별시 조례 조항을 가려내는 도우미다. [질문]은 어떤 대상의 구체 값(금액·한도·기준·시간·절차 등)을 묻는데, 그 값은 조례에 없다. "
+            "네가 찾을 것은 값을 정한 조항이 아니다(값은 어느 조항에도 없다). "
+            "[후보] 중에 질문이 묻는 대상 그 자체(그 지원·요금·사용료·수당·배상·제도)를 두거나 시행하도록 정한 조항이 있는지만 가린다. "
+            "조항이 그 대상을 두기만 하고 금액·한도·기준을 정하지 않았어도, 대상이 같으면 covers=true다. "
+            "asked에 질문이 묻는 대상을 짧게 적고, term에는 그 대상을 조문에 쓰일 용어로 바꾼 검색어를 적는다"
+            "(월세→차임, 보증금→주택임차보증금, 따릉이→공공자전거, 할인→감면, 벌금→과태료. 예: '청년 주거안정 차임 보조'). "
+            "reason에 후보마다 그 조항이 바로 그 대상을 두는지 따진다. "
+            "covers가 true인 예: '청년 월세 지원금은 한 달에 얼마'↔'주택임차보증금 및 차임의 보조 방안을 수립·시행하여야 한다', "
+            "'동물 화장비가 얼마'↔'공설동물장묘시설 이용자에게 사용료를 부과할 수 있다', '분실 배상액이 얼마'↔'분실한 이용자에게 손해배상을 요구할 수 있다'. "
+            "다음은 모두 covers=false, ids=[]다: 주제만 비슷하고 그 대상을 두는 조항이 아닌 경우(헬멧 과태료를 묻는데 안전교육 조항만 있음, 보상금·보험금을 묻는데 그런 제도를 둔 조항이 없음); "
+            "질문이 국가 법령(도로교통법·근로기준법·동물보호법 등)의 기준이나 처벌을 묻는 경우; 자치구(○○구)나 다른 시·도의 조례·규칙을 묻는 경우; "
+            "조문 내용을 지어내라는 요구; 연락처·전화번호·운영 시간표처럼 조례가 다루지 않는 안내 정보를 묻는 경우; "
+            "질문이 묻는 돈과 조항이 정한 돈의 종류가 다른 경우(보상금·위로금을 묻는데 조항은 이미 낸 요금의 반환이나 감면을 정함, 지원금을 묻는데 조항은 과태료를 정함); "
+            "질문이 전제한 사정(시스템 장애, 사고, 분쟁 등)을 조항이 다루지 않는 경우. "
+            "확실할 때만 true로 하고, 보통 조항 하나만 고른다. 결과는 JSON으로 낸다.")},
+        {"role": "user", "content": f"[질문]\n{question}\n\n[후보]\n{listing}"}],
+        response_format=TOPIC_SCHEMA)
+    try:
+        got = json.loads(raw)
+        term = got.get("term", "")
+        if not got["covers"]:
+            return [], term
+        return [cands[i - 1] for i in dict.fromkeys(got["ids"]) if isinstance(i, int) and 1 <= i <= len(cands)][:2], term
+    except (json.JSONDecodeError, KeyError, TypeError):
+        return [], ""
+
+
 def complete_articles(hits, limit=4):
     """같은 조의 항이 두 개 이상 검색됐다면 그 조가 질문의 핵심이므로, 빠진 나머지 항도 근거에 더합니다.
 
@@ -697,6 +736,78 @@ def answer(question):
 
 
 EVIDENCE_NO = re.compile(r"근거\s?(\d+)")
+# 질문의 낱말로 어느 조례 이야기인지 가늠합니다. 주제 조항 안내는 그 조례의 조항일 때만 통과시킵니다
+# (함정 D18 '공영주차장 예약 앱 보상'이 자전거 조례 조항 인용으로 뚫림, 11/20).
+LAW_WORDS = {"주차장": r"주차|차량|자동차|차를", "동물보호": r"동물|반려|강아지|고양이|유기견|개를|애견|펫",
+             "자전거": r"자전거|따릉이|킥보드", "도시공원": r"공원|산책로|풋살|야영|캠핑",
+             "청년": r"청년|월세|보증금|자취|취업|알바", "금연": r"금연|흡연|담배|전자담배"}
+
+
+def _law_matches(question, label):
+    """질문의 낱말이 가리키는 조례와 조항의 조례가 같은가. 질문에서 조례를 가늠할 수 없으면 통과."""
+    want = [k for k, pat in LAW_WORDS.items() if re.search(pat, question)]
+    return not want or any(k in label for k in want)
+
+
+TOPIC_ANSWER = re.compile(DELEGATED_ANSWER.pattern + r"|정하지 않|다고만 (되어|규정|정하)")
+# 자치구·다른 시도의 조례나 국가 법령의 기준을 묻는 질문은 서울시 조례 조항으로 안내하지 않습니다(공지: 이런 질문은 확인 불가가 정답).
+# 함정 H37('송파구 자체 청년 월세 지원 조례대로…')이 제13조 제1항 인용으로 뚫려 넣었습니다(11/20).
+OTHER_JURISDICTION = re.compile(
+    r"[가-힣]{1,4}구\s?(자체|의)?\s?[^.?!]{0,25}(조례|규칙)"
+    r"|(부산|대구|인천|광주|대전|울산|세종|경기|강원|충청|충북|충남|전라|전북|전남|경상|경북|경남|제주)[가-힣]{0,6}\s?[^.?!]{0,25}(조례|규칙)"
+    r"|(?<!조례)[가-힣]{2,10}법\s?(이랑|과|와|상|기준|에서|으로|에 따|에 의)|국립공원")
+
+
+def topic_guide(question, out, hits):
+    """'확인 불가'로 끝나려는 답 중, 조례가 질문의 대상을 직접 다루지만 묻는 값만 없는 경우를 조항 인용 안내로 바꿉니다(config.USE_TOPIC_GUIDE).
+
+    모델은 이런 질문에 '조례에는 …정해져 있지 않습니다. 제13조 제1항은 …'처럼 맞는 안내를 쓰고도 found=false로 냅니다(11/20 추적: 월세·보증금·화장비·분실 배상).
+    그 답이 고른 조례 조항만 후보로 보여 주고(pick_topic) 대상을 직접 다루는 조항이 확인될 때만 통과시킵니다. 아니면 None(호출한 쪽이 확인 불가).
+    """
+    import upstage
+    if not config.USE_TOPIC_GUIDE or not TOPIC_ANSWER.search(out.get("answer", "")) or OTHER_JURISDICTION.search(question):
+        return None
+    claimed = [hits[c["evidence_id"] - 1] for c in out.get("claims", []) if 1 <= c.get("evidence_id", 0) <= len(hits)]
+    # 답은 옆 항(제13조 제3항)을 짚고 대상을 두는 항(제13조 제1항)은 빼먹는 일이 있어, 고른 조항과 같은 조의 다른 항도 후보에 넣습니다.
+    arts = {_node_of(h["label"]) for h in claimed if not h.get("ref")}
+    pool = claimed + [h for h in hits if not h.get("ref") and _node_of(h["label"]) in arts]
+    cands = list({h["label"]: h for h in pool if not h.get("ref") and not DISTRICT.search(h["label"])}.values())[:6]
+    picked, term = pick_topic(question, cands) if cands else ([], "")
+    if not picked and term and any(not h.get("ref") for h in claimed):
+        # 대상을 두는 조항이 검색에서 빠졌을 수 있어('월세 지원금'으로는 '차임의 보조 방안' 조항이 안 잡힘) 조문 용어로 한 번 더 찾아 다시 가립니다.
+        seen = {h["label"] for h in cands}
+        laws = {h["law"] for h in claimed if not h.get("ref")}
+        more = [h for h in complete_articles(retrieve(term, top_k=6))
+                if h["label"] not in seen and not h.get("ref") and not DISTRICT.search(h["label"]) and h["law"] in laws][:6]
+        if more:
+            picked, _ = pick_topic(question, more)
+            if picked:
+                hits = hits + [h for h in more if h["label"] not in {x["label"] for x in hits}]
+    picked = [h for h in picked if _law_matches(question, h["label"])]
+    if picked:   # 판정이 실행마다 흔들려(D18: 3회 중 1회 통과) 한 번 더 물어 두 번 모두 고른 조항만 남깁니다
+        second, _ = pick_topic(question, picked)
+        picked = [h for h in picked if h["label"] in {x["label"] for x in second}]
+    if not picked:
+        return None
+    names = ", ".join(h["label"] for h in picked)
+    again = _generate(question, hits, f"질문이 묻는 대상을 다루는 조례 조항은 {names}이다. 이 조항을 근거로 위임·준용 규칙의 문장 꼴대로 "
+                                        "'조례에는 (질문이 묻는 것)이 정해져 있지 않습니다. (조항)은 (그 조항이 정한 내용)이라고만 정하므로, 구체적인 내용은 서울시 안내에서 확인해 주세요'라고 안내하라. "
+                                        "delegated와 found는 true로 한다. 값은 지어내지 말고, 참고 근거의 수치나 다른 법령의 기준도 쓰지 말라.")
+    text = again.get("answer", "")
+    if not TOPIC_ANSWER.search(text) or reference_only_numbers(text, question, hits):
+        return None
+    if config.USE_VERIFY and upstage.groundedness(_context(picked), text) == "notGrounded":
+        return None
+    text = name_evidence(text, hits)
+    if config.USE_PLAIN:
+        text = plain_text(text)
+    first = picked[0]
+    originals = _original_texts()
+    evidence = [{"label": h["label"], "text": originals.get(h["label"], h["text"]), "source_url": h["source_url"],
+                 "effective_date": h["effective_date"]} for h in picked]
+    return {"answer": text, "citation": [h["label"] for h in picked], "source_url": first["source_url"],
+            "effective_date": first["effective_date"]}, evidence, False
+
 
 
 PLAIN_RULES = """
@@ -718,7 +829,11 @@ def plain_text(answer):
         v = num / den * 100
         return f"{v:g}%"
     answer = RATIO.sub(pct, answer)
-    answer = re.sub(r"%을(?=\s)", "%를", re.sub(r"%은(?=\s)", "%는", answer))   # '50%을' → '50%를'
+    answer = re.sub(r"(\d[\d.]*)% ?\((?:\1%|\1 ?퍼센트)\)", r"\1%", answer)   # '100분의 20(20%)' → '20%(20%)' → '20%'
+    # 조사 맞춤: '50%을'→'50%를', '50%은'→'50%는', '50%이 할인'→'50%가 할인'('50%이며' 같은 서술격은 그대로)
+    answer = re.sub(r"%을(?![가-힣])", "%를", answer)
+    answer = re.sub(r"%은(?![가-힣])", "%는", answer)
+    answer = re.sub(r"%이(?=\s)", "%가", answer)   # '50%을' → '50%를'
     return SUBITEM.sub(r"\1", answer)
 
 
@@ -806,11 +921,20 @@ def _answer_once(question):
     # 보통의 답에도 delegated를 true로 내는 일이 있어(M3·D28: 인용이 잘못 줄어듦), 답 본문이 실제로
     # '조례에는 …정해져 있지 않습니다' 꼴일 때만 위임 안내로 봅니다.
     # ('이 자료만으로는 …알 수 없습니다. 제21조의2에 따라 …조례로 따로 정합니다'처럼 쓰는 안내도 있어 CANT_CONFIRM 꼴도 포함합니다.)
-    delegated = bool(out.get("found") and out.get("delegated")
+    # '네, 받을 수 있습니다 …(할인율은 정해져 있지 않습니다)'처럼 긍정으로 답한 보통의 답은 위임 안내가 아닙니다.
+    # delegated=true로 나오면 인용이 위임 문구 조항 하나로 줄어 D35가 0.25가 됐습니다(11/20). 위임 정답 46개 답 중 '네'로 시작한 것은 없었습니다.
+    delegated = bool(out.get("found") and out.get("delegated") and not out.get("answer", "").lstrip().startswith("네")
                      and (DELEGATED_ANSWER.search(out.get("answer", "")) or CANT_CONFIRM.search(out.get("answer", ""))))
     first_sentence = FIRST_SENTENCE.split(out.get("answer", "").strip(), 1)[0]
+    # '아니요, 그런 금액은 조례에 정해져 있지 않습니다'로 시작하는 답은 위임 안내가 아니라 '그런 규정 없음'입니다.
+    # delegated=true로 나와 함정 D18(예약 앱 보상금)이 별표 1 인용과 함께 통과한 일이 있어(11/20 운영 서버 재채점, 1회) 위임으로 보지 않습니다.
+    if delegated and re.match(r"아니요,?\s*그런", first_sentence):
+        delegated = False
+        if not config.USE_TOPIC_GUIDE:
+            return dict(UNKNOWN), [], True
+        return topic_guide(question, out, hits) or (dict(UNKNOWN), [], True)
     if not delegated and (CANT_CONFIRM.search(out.get("answer", "")) or NO_SUCH_RULE.match(first_sentence)):
-        return dict(UNKNOWN), [], True
+        return topic_guide(question, out, hits) or (dict(UNKNOWN), [], True)
     # 검증 ③: Solar가 고른 근거 번호를 실제 조각으로 바꾸고, 자치구 조례는 빼며, found=false면 멈춥니다.
     ids = [c["evidence_id"] for c in out.get("claims", [])]
     used = [hits[i - 1] for i in ids if 1 <= i <= len(hits)]
@@ -819,7 +943,7 @@ def _answer_once(question):
     refs = [h for h in used if h.get("ref")]   # 상위법 참고는 검증에만 쓰고 인용에서는 뺍니다
     used = [h for h in used if not h.get("ref") and not DISTRICT.search(h["label"])]
     if not out.get("found") or not used:
-        return dict(UNKNOWN), [], True
+        return topic_guide(question, out, hits) or (dict(UNKNOWN), [], True)
     # 위임·준용이라고 답했는데 인용한 조항 어디에도 맡긴다는 문구가 없으면 근거 없는 안내로 봅니다.
     if delegated:   # 인용은 맡긴다는 문구가 있는 조항만 남깁니다(주변 조항까지 붙이면 인용 초과로 감점).
         strong = [h for h in used if DELEGATES_STRONG.search(h["text"])]
@@ -856,8 +980,19 @@ def _answer_once(question):
                 strong = [h for h in hits if not h.get("ref") and _node_of(h["label"]) in arts
                           and DELEGATES_STRONG.search(h["text"])]
             used = strong or [h for h in used if DELEGATES.search(h["text"])]
-        if not used:
-            return dict(UNKNOWN), [], True
+        if not used:   # 위임 문구가 있는 조항이 없으면, 대상을 두는 조항이 있는지 한 번 가려 봅니다(H32: '사용료를 부과할 수 있다')
+            return topic_guide(question, out, hits) or (dict(UNKNOWN), [], True)
+    # 공지(11/19) 2번 예시의 꼴: "조례에는 …이 정해져 있지 않습니다. 「조례」 제N조 제M항에 따라 …이 따로 정하므로, …에서 확인해 주세요."
+    # '아니요, 이 자료만으로는 …알 수 없습니다'처럼 시작하는 위임 답이 있어(H31·H35) 그 꼴로 한 번 다시 쓰게 합니다. 인용은 그대로 둡니다.
+    if delegated and re.match(r"(네|아니요)[,.\s]", out.get("answer", "").lstrip()):
+        names = ", ".join(dict.fromkeys(h["label"] for h in used))
+        again = _generate(question, hits, f"질문이 묻는 내용을 맡긴 조항은 {names}이다. 답을 '네'·'아니요'로 시작하지 말고 정확히 이 꼴로 쓰라: "
+                                            "'조례에는 (질문이 묻는 것)이 정해져 있지 않습니다. (조례 이름) 제N조 제M항에 따라 (누가·무엇으로) 정하므로, 구체적인 내용은 (어디)에서 확인해 주세요.' "
+                                            "참고 근거의 수치는 쓰지 말라.")
+        text = again.get("answer", "")
+        if (DELEGATED_ANSWER.search(text) and not re.match(r"(네|아니요)[,.\s]", text.lstrip())
+                and not reference_only_numbers(text, question, hits)):
+            out = {**out, "answer": text}
     if reference_only_numbers(out["answer"], question, hits):   # 대개 부가 설명 하나가 섞인 것이라 한 번 다시 답하게 합니다(ABSTAIN_RETRY)
         return dict(UNKNOWN), [], True
 
