@@ -1,0 +1,5 @@
+.env
+__pycache__/
+data/annex_files/
+data/vectors_*.npy
+results/

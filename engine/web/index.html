@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>서울 조례 도우미</title>
+<meta name="description" content="서울특별시 조례 6종 원문에서 근거 조항을 찾아 답합니다.">
+<!-- 공공서비스용 서체 Pretendard GOV(KRDS 표준, OFL). 공식 동적 서브셋을 서버가 직접 내보내 외부 CDN 없이도 같은 화면입니다. -->
+<link rel="stylesheet" href="/fonts/pretendard-gov-dynamic-subset.css">
+<style>
+  /* 색·간격은 KRDS(대한민국 정부 디자인 시스템) 토큰 기준, 간격은 8px 단위 */
+  :root {
+    --ink: #1e2124; --ink-2: #464c53; --ink-3: #6d7882;
+    --line: #cdd1d5; --line-soft: #e6e8ea;
+    --bg: #ffffff; --bg-soft: #f4f5f6;
+    --primary: #256ef4; --primary-ink: #0b50d0; --primary-wash: #ecf2fe;
+    --warn-ink: #8a5c00; --warn-wash: #fff3db; --warn-line: #ffe0a3;
+    --danger-ink: #bd2c0f; --danger-wash: #fdefec;
+    --radius: 8px;
+    --font: "Pretendard GOV Variable", "Pretendard GOV", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { font-size: 100%; -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--font); font-size: 1.0625rem; line-height: 1.65; letter-spacing: 0;
+    font-feature-settings: "tnum" 0; text-rendering: optimizeLegibility;
+  }
+  /* 한글은 어절 단위로 줄바꿈하고, 긴 조례명·URL만 필요할 때 끊습니다 */
+  :lang(ko) { word-break: keep-all; overflow-wrap: anywhere; }
+  ::selection { background: var(--primary-wash); color: var(--ink); }
+  a { color: var(--primary-ink); text-underline-offset: 3px; }
+  :where(a, button, summary, textarea):focus-visible { outline: 3px solid var(--primary-ink); outline-offset: 3px; border-radius: 4px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  main { max-width: 45rem; margin: 0 auto; padding: 48px 24px 64px; }
+
+  /* ---- 머리 ---- */
+  .masthead { margin-bottom: 32px; }
+  .agency { margin: 0 0 8px; font-size: 0.9375rem; font-weight: 600; color: var(--primary-ink); }
+  h1 { margin: 0; font-size: 2rem; line-height: 1.35; font-weight: 700; letter-spacing: -0.01em; }
+  .lede { margin: 8px 0 0; font-size: 1.0625rem; color: var(--ink-2); max-width: 36em; }
+
+  /* ---- 질문 입력 ---- */
+  .ask { border: 1px solid var(--line); border-radius: 12px; background: var(--bg); padding: 16px; transition: border-color .15s, box-shadow .15s; }
+  .ask:focus-within { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-wash); }
+  .ask label { display: block; font-size: 0.9375rem; font-weight: 600; color: var(--ink-2); margin-bottom: 8px; }
+  textarea {
+    display: block; width: 100%; border: 0; resize: none; outline: none; background: transparent;
+    font: inherit; font-size: 1.1875rem; line-height: 1.6; color: var(--ink); min-height: 3.2em; padding: 0;
+  }
+  textarea::placeholder { color: var(--ink-3); }
+  .ask-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 12px; }
+  .scope { font-size: 0.8125rem; color: var(--ink-3); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 48px; min-width: 120px; padding: 0 20px; border-radius: var(--radius);
+    font: inherit; font-size: 1.0625rem; font-weight: 700; cursor: pointer; border: 1px solid transparent;
+  }
+  .btn-primary { background: var(--primary-ink); color: #fff; }
+  .btn-primary:hover { background: #083f9f; }
+  .btn-primary:disabled { background: #8aa9e6; cursor: progress; }
+  .btn-quiet { background: var(--bg); color: var(--ink-2); border-color: var(--line); min-width: 0; min-height: 40px; font-size: 0.9375rem; font-weight: 600; }
+  .btn-quiet:hover { background: var(--bg-soft); }
+
+  /* ---- 예시 질문 ---- */
+  .examples { margin-top: 24px; }
+  .examples h2 { margin: 0 0 8px; font-size: 0.9375rem; font-weight: 600; color: var(--ink-2); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px;
+    border: 1px solid var(--line); border-radius: 999px; background: var(--bg);
+    font: inherit; font-size: 0.9375rem; color: var(--ink); cursor: pointer;
+  }
+  .chip:hover { border-color: var(--primary); background: var(--primary-wash); }
+  .chip b { font-weight: 700; color: var(--primary-ink); }
+
+  /* ---- 결과 ---- */
+  #result { margin-top: 40px; scroll-margin-top: 16px; }
+  .q-echo { margin: 0 0 16px; font-size: 0.9375rem; color: var(--ink-3); }
+  .q-echo strong { color: var(--ink-2); font-weight: 600; }
+
+  .status { display: flex; align-items: center; gap: 12px; font-size: 1.0625rem; font-weight: 600; color: var(--ink); }
+  .status small { font-weight: 400; color: var(--ink-3); font-size: 0.9375rem; font-variant-numeric: tabular-nums; }
+  .spinner { width: 20px; height: 20px; flex: none; animation: spin .8s linear infinite; }
+  .spinner circle { fill: none; stroke-width: 2.5; }
+  .spinner .track { stroke: var(--primary-wash); }
+  .spinner .arc { stroke: var(--primary-ink); stroke-linecap: round; stroke-dasharray: 14 60; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .skeleton { margin-top: 20px; display: grid; gap: 12px; }
+  .skeleton span { display: block; height: 16px; border-radius: 4px; background: linear-gradient(90deg, var(--bg-soft) 0%, #e9ebee 50%, var(--bg-soft) 100%); background-size: 200% 100%; animation: shimmer 1.4s ease-in-out infinite; }
+  .skeleton span:nth-child(2) { width: 92%; } .skeleton span:nth-child(3) { width: 64%; }
+  @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+  .slow { margin-top: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 0.9375rem; color: var(--ink-2); }
+
+  .conclusion { margin: 0; font-size: 1.1875rem; line-height: 1.6; font-weight: 700; color: var(--ink); }
+  .detail { margin: 8px 0 0; font-size: 1.0625rem; color: var(--ink); }
+  .refs { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none; }
+  .ref {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border-radius: 6px;
+    background: var(--primary-wash); color: var(--primary-ink); font: inherit; font-size: 0.9375rem; font-weight: 600;
+    border: 0; cursor: pointer; text-align: left;
+  }
+  .ref:hover { background: #dbe7fd; }
+  .ref .n { font-variant-numeric: tabular-nums; }
+
+  .sources { margin-top: 32px; }
+  .sources h2 { margin: 0 0 12px; font-size: 1.0625rem; font-weight: 700; }
+  .source { border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); }
+  .source + .source { margin-top: 12px; }
+  .source summary { list-style: none; cursor: pointer; padding: 16px; display: grid; grid-template-columns: auto 1fr auto; gap: 4px 12px; align-items: start; }
+  .source summary::-webkit-details-marker { display: none; }
+  .source .num { grid-row: span 2; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 6px; background: var(--primary-wash); color: var(--primary-ink); font-weight: 700; font-size: 0.9375rem; font-variant-numeric: tabular-nums; }
+  .source .title { font-weight: 700; font-size: 1.0625rem; line-height: 1.5; }
+  .source .meta { grid-column: 2; font-size: 0.9375rem; color: var(--ink-2); }
+  .source .chev { grid-row: span 2; width: 20px; height: 20px; margin-top: 4px; color: var(--ink-3); transition: transform .15s; }
+  .source[open] .chev { transform: rotate(180deg); }
+  .source .body { padding: 0 16px 16px 56px; }
+  .source blockquote { margin: 0; padding: 16px; background: var(--bg-soft); border-radius: 6px; font-size: 1.0625rem; line-height: 1.75; white-space: pre-wrap; }
+  .source .link { display: inline-flex; align-items: center; gap: 4px; margin-top: 12px; font-size: 0.9375rem; font-weight: 600; min-height: 32px; }
+
+  .notice { margin-top: 24px; font-size: 0.875rem; color: var(--ink-3); }
+
+  /* ---- 연관 조례 지식그래프 ---- */
+  .kg { margin-top: 32px; }
+  .kg h2 { margin: 0 0 4px; font-size: 1.0625rem; font-weight: 700; }
+  .kg .sub { margin: 0 0 12px; font-size: 0.9375rem; color: var(--ink-2); }
+  .kg-canvas { border: 1px solid var(--line); border-radius: var(--radius); background: #fbfcfd; overflow: hidden; }
+  .kg-canvas svg { display: block; width: 100%; height: auto; touch-action: manipulation; }
+  .kg-canvas text { font-family: var(--font); }
+  .kg-node { cursor: default; }
+  .kg-node.clickable { cursor: pointer; }
+  .kg-node.clickable:hover rect, .kg-node.clickable:focus rect { stroke-width: 2.5; }
+  .kg-node:focus { outline: none; }
+  .kg-node:focus-visible rect { stroke: var(--primary-ink); stroke-width: 3; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 12px 0 0; padding: 0; list-style: none; font-size: 0.8125rem; color: var(--ink-2); }
+  .legend li { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 14px; height: 14px; border-radius: 4px; display: inline-block; border: 1.5px solid; }
+  .related { margin-top: 16px; }
+  .related h3 { margin: 0 0 8px; font-size: 0.9375rem; font-weight: 700; color: var(--ink-2); }
+  .related .source summary { grid-template-columns: 1fr auto; }
+  .related .source .meta { grid-column: 1; }
+  .related .source .chev { grid-row: 1 / span 2; grid-column: 2; }
+  .related .source .body { padding-left: 16px; }
+  /* ---- 다른 조례와의 연결(답 바로 아래) ---- */
+  .cross { margin: 16px 0 0; padding: 12px 16px; border: 1px solid var(--line-soft); border-radius: var(--radius); background: var(--bg-soft); }
+  .cross h2 { margin: 0 0 4px; font-size: 0.9375rem; font-weight: 700; color: var(--ink-2); }
+  .cross p { margin: 0 0 8px; font-size: 0.875rem; color: var(--ink-3); }
+  .cross ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+  .cross li { font-size: 0.9375rem; }
+  .cross button { font: inherit; color: var(--primary-ink); background: none; border: 0; padding: 0; text-decoration: underline; cursor: pointer; }
+  .cross .why { color: var(--ink-3); font-size: 0.8125rem; }
+  /* ---- 오프라인 시연 모드 표시 ---- */
+  .offline { margin: 8px 0 16px; padding: 8px 12px; border: 1px solid var(--warn-line); border-radius: var(--radius); background: var(--warn-wash); color: var(--warn-ink); font-size: 0.875rem; }
+  .why { display: block; font-size: 0.875rem; color: var(--ink-2); }
+  .why::before { content: "연결 이유 · "; color: var(--ink-3); }
+
+  .state { padding: 20px; border-radius: var(--radius); }
+  .state h2 { margin: 0 0 8px; font-size: 1.1875rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .state p { margin: 0; color: var(--ink); }
+  .state p + p { margin-top: 8px; }
+  .state svg { flex: none; }
+  .state-unknown { background: var(--warn-wash); border: 1px solid var(--warn-line); }
+  .state-unknown h2 { color: var(--warn-ink); }
+  .state-error { background: var(--danger-wash); border: 1px solid #f7c7bd; }
+  .state-error h2 { color: var(--danger-ink); }
+  .state .btn-quiet { margin-top: 16px; }
+
+  footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--line-soft); font-size: 0.875rem; color: var(--ink-3); line-height: 1.7; }
+  footer p { margin: 0; }
+  footer p + p { margin-top: 4px; }
+
+  @media (max-width: 47.99rem) {
+    main { padding: 32px 16px 48px; }
+    h1 { font-size: 1.5rem; }
+    .ask-bar { flex-direction: column; align-items: stretch; }
+    .scope { order: 2; }
+    .btn-primary { width: 100%; }
+    .source .body { padding-left: 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .spinner, .skeleton span { animation: none; }
+    .ask, .source .chev { transition: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header class="masthead">
+    <p class="agency">서울특별시 조례 6종 · 2026. 10. 1. 시행본</p>
+    <h1>서울 조례 도우미</h1>
+    <p class="lede">평소 말투로 물어보세요. 조례 원문에서 근거 조항을 찾아 답하고, 근거가 없으면 지어내지 않고 확인 불가로 알려 드려요.</p>
+  </header>
+
+  <form id="ask-form" class="ask" novalidate>
+    <label for="question">질문</label>
+    <textarea id="question" name="question" rows="2" placeholder="예) 장애인인데 공영주차장 요금 할인 받을 수 있나요?" autocomplete="off"></textarea>
+    <div class="ask-bar">
+      <span class="scope">주차장 · 동물보호 · 자전거 · 도시공원 · 청년 · 금연</span>
+      <button class="btn btn-primary" type="submit" id="submit">질문하기</button>
+    </div>
+  </form>
+
+  <section class="examples" aria-labelledby="ex-title">
+    <h2 id="ex-title">이렇게 물어볼 수 있어요</h2>
+    <ul class="chips">
+      <li><button type="button" class="chip" data-q="다둥이 행복카드가 있는데 서울시 공영주차장 요금 할인되나요?"><b>주차</b>다둥이 카드 할인</button></li>
+      <li><button type="button" class="chip" data-q="아기 데리고 공영주차장 가면 가족배려 주차칸 써도 되나요?"><b>주차</b>가족배려 주차칸</button></li>
+      <li><button type="button" class="chip" data-q="어린이공원에서 술 마시면 안 되나요?"><b>공원</b>어린이공원 음주</button></li>
+      <li><button type="button" class="chip" data-q="유기견을 입양해서 동물등록을 하려는데 등록수수료를 내야 하나요?"><b>반려동물</b>입양견 등록비</button></li>
+      <li><button type="button" class="chip" data-q="서울시 청년 기본 조례에서 청년은 몇 살부터 몇 살까지인가요?"><b>청년</b>청년 나이 기준</button></li>
+      <li><button type="button" class="chip" data-q="서울시 금연구역에서 담배를 피우면 과태료가 얼마인가요?"><b>금연</b>흡연 과태료</button></li>
+    </ul>
+  </section>
+
+  <!-- 상태 안내는 처음부터 DOM에 두고(role=status) 시작·완료 때 한 번씩만 읽힙니다 -->
+  <p id="live" class="sr-only" role="status" aria-atomic="true"></p>
+  <section id="result" aria-label="답변"></section>
+
+  <footer>
+    <p>서울특별시 조례 6종만 다룹니다. 자치구 조례와 국가 법령은 포함하지 않아요.</p>
+    <p>AI가 조례를 요약한 참고 정보이며 법적 효력이 없습니다. 정확한 적용 여부는 조례 원문과 담당 부서(120 다산콜재단)에서 확인하세요.</p>
+    <p>Upstage Solar · 법제처 국가법령정보 OPEN API</p>
+  </footer>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const form = $("#ask-form"), input = $("#question"), submit = $("#submit"), result = $("#result"), live = $("#live");
+const SLOW_MS = 10000;          // 이 시간을 넘기면 '시간이 걸리고 있어요' 안내와 중단 버튼
+let controller = null, tick = null;
+
+const ICON = {
+  chev: '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>',
+  ext: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>',
+  info: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>',
+  alert: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/></svg>',
+};
+
+function el(tag, attrs = {}, html) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+  if (html !== undefined) n.innerHTML = html;
+  return n;
+}
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const shortLabel = (label) => label.replace("서울특별시 ", "");
+const articleOnly = (label) => (label.match(/(제\d+조(?:의\d+)?(?:\s?제\d+항)?|별표\s?\d*)$/) || [label])[0];
+const dateKo = (d) => d ? d.replace(/^(\d{4})-(\d{2})-(\d{2})$/, (_, y, m, day) => `${y}. ${+m}. ${+day}.`) : "";
+
+// 조각 머리글([조례명 제N조(제목)])과 별표의 HTML 표 태그를 읽기 좋은 글로 바꿉니다
+function plainClause(text) {
+  return text.replace(/^\[[^\]]*\]\n/, "")
+    .replace(/<\/tr>/g, "\n").replace(/<\/t[dh]>/g, "  ").replace(/<[^>]+>/g, "").trim();
+}
+
+// 첫 문장을 결론으로, 나머지를 설명으로 나눕니다
+function splitConclusion(answer) {
+  const m = answer.match(/^(.+?[.다요])(\s+)([\s\S]*)$/);
+  return m ? [m[1], m[3]] : [answer, ""];
+}
+
+function echo(question) {
+  return el("p", { class: "q-echo" }, `<strong>질문</strong> · ${esc(question)}`);
+}
+
+function showLoading(question) {
+  const started = Date.now();
+  result.replaceChildren(echo(question));
+  const box = el("div", { "aria-busy": "true" });
+  box.innerHTML = `<div class="status"><svg class="spinner" viewBox="0 0 24 24" aria-hidden="true"><circle class="track" cx="12" cy="12" r="9.5"/><circle class="arc" cx="12" cy="12" r="9.5"/></svg><span id="status-text">관련 서울시 조례를 찾는 중이에요</span><small id="elapsed">0초</small></div>
+    <div class="skeleton" aria-hidden="true"><span></span><span></span><span></span></div>`;
+  result.append(box);
+  live.textContent = "관련 서울시 조례를 찾는 중입니다.";
+  tick = setInterval(() => {
+    const sec = Math.floor((Date.now() - started) / 1000);
+    $("#elapsed").textContent = `${sec}초`;
+    if (Date.now() - started > SLOW_MS && !$("#slow")) {
+      $("#status-text").textContent = "근거를 꼼꼼히 확인하느라 시간이 걸리고 있어요";
+      const slow = el("div", { class: "slow", id: "slow" });
+      slow.innerHTML = `<span>보통 10초 안팎이 걸려요.</span>`;
+      const stop = el("button", { type: "button", class: "btn btn-quiet" }, "중단");
+      stop.onclick = () => controller?.abort();
+      slow.append(stop);
+      box.append(slow);
+    }
+  }, 250);
+}
+
+function renderAnswer(question, data) {
+  const [lead, rest] = splitConclusion(data.answer);
+  const evidence = data.evidence || [];
+  const frag = [echo(question)];
+  if (data.offline) frag.push(offlineNote(data.saved_at));
+  frag.push(el("p", { class: "conclusion" }, esc(lead)));
+  if (rest) frag.push(el("p", { class: "detail" }, esc(rest)));
+
+  const refs = el("ul", { class: "refs", "aria-label": "근거 조항" });
+  evidence.forEach((ev, i) => {
+    const li = el("li");
+    const b = el("button", { type: "button", class: "ref", "aria-controls": `src-${i}` },
+      `<span class="n">${i + 1}</span>${esc(articleOnly(ev.label))}`);
+    b.onclick = () => { const d = $(`#src-${i}`); d.open = true; d.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest" }); d.querySelector("summary").focus({ preventScroll: true }); };
+    li.append(b); refs.append(li);
+  });
+  frag.push(refs);
+  const cross = renderCross(data.graph && data.graph.related);
+  if (cross) frag.push(cross);
+
+  const sources = el("section", { class: "sources", "aria-labelledby": "src-title" });
+  sources.append(el("h2", { id: "src-title" }, `답변에 사용한 근거 ${evidence.length}개`));
+  evidence.forEach((ev, i) => {
+    const d = el("details", { class: "source", id: `src-${i}` });
+    if (i === 0) d.open = true;
+    d.innerHTML = `<summary><span class="num">${i + 1}</span><span class="title">${esc(shortLabel(ev.label))}</span>${ICON.chev}
+        <span class="meta">시행 ${esc(dateKo(ev.effective_date))}</span></summary>
+      <div class="body"><blockquote>${esc(plainClause(ev.text))}</blockquote>
+        <a class="link" href="${esc(ev.source_url)}" target="_blank" rel="noopener">국가법령정보센터에서 원문 보기 ${ICON.ext}</a></div>`;
+    sources.append(d);
+  });
+  const kg = renderGraph(data.graph);
+  if (kg) frag.push(kg);
+  frag.push(sources);
+  frag.push(el("p", { class: "notice" }, "조항 번호·원문 링크·시행일은 AI가 쓰지 않고 검색된 조례 원문에서 그대로 가져옵니다."));
+  result.replaceChildren(...frag);
+  live.textContent = `답변이 준비되었습니다. 근거 ${evidence.length}개를 확인했습니다.`;
+}
+
+const offlineNote = (savedAt) => el("p", { class: "offline" },
+  `네트워크 없이 미리 저장해 둔 실제 답변을 보여 드려요.${savedAt ? ` 저장 시각 ${esc(savedAt)}` : ""}`);
+
+// 답변 근거 밖의 다른 조례에서 이어지는 조항을 조례별로 묶어 답 바로 아래에 보여 줍니다(한 질문이 여러 조례에 걸치는 경우).
+// 내용은 서버가 보낸 graph.related(연결 이유 포함) 그대로이고, AI를 한 번 더 부르지 않습니다.
+function renderCross(related) {
+  if (!related || !related.length) return null;
+  const byLaw = new Map();
+  related.forEach((r, i) => { const k = shortLabel(r.law); byLaw.set(k, [...(byLaw.get(k) || []), [r, i]]); });
+  const box = el("section", { class: "cross", "aria-labelledby": "cross-title" });
+  box.append(el("h2", { id: "cross-title" }, `다른 조례 ${byLaw.size}개와도 이어져요`));
+  box.append(el("p", {}, "답변 근거는 아니지만 같은 대상자·용어·주제로 연결된 조항이에요. 누르면 아래 연관 조례 지도에서 원문을 볼 수 있어요."));
+  const ul = el("ul");
+  for (const [law, items] of byLaw) {
+    const li = el("li", {}, `<b>${esc(law)}</b> `);
+    items.forEach(([r, i], k) => {
+      const b = el("button", { type: "button" }, `${esc(articleOnly(r.label))}(${esc(r.title)})`);
+      b.onclick = () => { const d = document.getElementById(`rel-${i}`); if (d) { d.open = true; d.scrollIntoView({ behavior: "smooth", block: "nearest" }); } };
+      if (k) li.append(", ");
+      li.append(b);
+    });
+    const why = (items[0][0].reasons || [])[0];
+    if (why) li.append(el("span", { class: "why" }, esc(why)));
+    ul.append(li);
+  }
+  box.append(ul);
+  return box;
+}
+
+// ---- 연관 조례 지식그래프: 서버가 보낸 부분 그래프를 힘 기반 배치(반복 계산)로 그립니다. 외부 라이브러리 없음 ----
+const KG_STYLE = {
+  question:  { fill: "#1e2124", stroke: "#1e2124", ink: "#ffffff" },
+  cited:     { fill: "#0b50d0", stroke: "#0b50d0", ink: "#ffffff" },
+  related:   { fill: "#ffffff", stroke: "#256ef4", ink: "#0b50d0" },
+  ordinance: { fill: "#e7f5ec", stroke: "#2f8a4f", ink: "#1d5c33" },
+  topic:     { fill: "#fff3db", stroke: "#e0a100", ink: "#8a5c00" },
+  reference: { fill: "#f4f5f6", stroke: "#9aa3ab", ink: "#464c53" },
+  law:       { fill: "#ffffff", stroke: "#9aa3ab", ink: "#464c53", dash: "4 3" },
+  target:    { fill: "#f3ecfd", stroke: "#7a4fd1", ink: "#55309f" },
+  term:      { fill: "#e6f6f7", stroke: "#16808a", ink: "#0e5b62" },
+  delegation:{ fill: "#ffffff", stroke: "#9aa3ab", ink: "#6d7882", dash: "2 3" },
+};
+// 관계 종류별 선 모양. label은 서버(rag.REL_KO)가 보냅니다. text: 선 위에 글자를 쓸지
+const EDGE_STYLE = {
+  "근거":         { stroke: "#0b50d0", width: 2.5 },
+  HAS_ARTICLE:   { stroke: "#b7bec5", dash: "1 4" }, HAS_ANNEX: { stroke: "#b7bec5", dash: "1 4" },
+  ABOUT:         { stroke: "#e0a100", dash: "3 4" }, "주제": { stroke: "#e0a100", dash: "3 4" },
+  "대상":         { stroke: "#7a4fd1", dash: "3 4" },
+  BENEFITS:      { stroke: "#2f8a4f", width: 1.8, text: true },
+  OBLIGES:       { stroke: "#c2410c", width: 1.8, text: true },
+  DEFINES:       { stroke: "#16808a", width: 1.6, text: true },
+  USES_TERM:     { stroke: "#16808a", dash: "4 3", text: true },
+  EXCEPTION_TO:  { stroke: "#bd2c0f", width: 1.8, dash: "6 3", arrow: true, text: true },
+  PENALIZES:     { stroke: "#8a1c0a", width: 1.8, arrow: true, text: true },
+  APPLIES:       { stroke: "#7a4fd1", arrow: true, text: true },
+  REFERS:        { stroke: "#9aa3ab", arrow: true, text: true },
+  IS_LEGAL_BASIS_OF: { stroke: "#9aa3ab", dash: "4 3", arrow: true, text: true },
+  DELEGATES:     { stroke: "#9aa3ab", dash: "2 3", arrow: true, text: true },
+};
+
+// 방사형 배치: 가운데 질문, 안쪽 고리에 주제, 조례마다 부채꼴 구역을 나눠 그 조례의 조항을 모으고, 마지막에 겹치는 상자를 밀어냅니다.
+// 무작위 값이 없어 같은 그래프는 항상 같은 그림으로 나옵니다.
+function layoutGraph(nodes, W, H, size) {
+  const cx = W / 2, cy = H / 2, rx = W / 2 - 72, ry = H / 2 - 26;
+  const seedLaw = (nodes.find((n) => n.role === "cited") || nodes.find((n) => n.role === "related") || {}).law;
+  const laws = [...new Set(nodes.filter((n) => n.role === "ordinance").map((n) => n.id))]
+    .sort((a, b) => (b === seedLaw) - (a === seedLaw));
+  const sector = (2 * Math.PI) / Math.max(laws.length, 1);
+  const base = new Map(laws.map((l, i) => [l, -Math.PI / 2 + i * sector]));
+  const p = nodes.map(() => ({ x: cx, y: cy }));
+  const put = (i, a, r) => { p[i] = { x: cx + rx * r * Math.cos(a), y: cy + ry * r * Math.sin(a) }; };
+  const ringOf = { cited: 0.45, reference: 0.74, related: 0.7, law: 0.95, delegation: 0.95, ordinance: 1 };
+  const inner = (n) => n.role === "topic" || n.role === "target" || n.role === "term";
+  const members = new Map();
+  nodes.forEach((n, i) => {
+    if (n.role === "question" || inner(n)) return;
+    const law = n.role === "ordinance" ? n.id : n.role === "law" || n.role === "delegation" ? seedLaw : n.law;
+    const key = `${law}|${["reference", "law", "delegation"].includes(n.role) ? "related" : n.role}`;
+    if (!members.has(key)) members.set(key, []);
+    members.get(key).push(i);
+  });
+  for (const [key, idxs] of members) {
+    const a0 = base.get(key.split("|")[0]) ?? 0;
+    const spread = Math.min((sector * 0.8) / idxs.length, 0.55);
+    idxs.forEach((i, j) => put(i, a0 + (j - (idxs.length - 1) / 2) * spread, ringOf[nodes[i].role] ?? 0.7));
+  }
+  const topics = nodes.map((n, i) => (inner(n) ? i : -1)).filter((i) => i >= 0);
+  topics.forEach((i, j) => put(i, -Math.PI / 2 + sector / 2 + (j * 2 * Math.PI) / topics.length, 0.4));
+  for (let it = 0; it < 300; it++) {
+    let moved = false;
+    for (let i = 0; i < p.length; i++) for (let j = i + 1; j < p.length; j++) {
+      const ox = (size[i].w + size[j].w) / 2 + 8 - Math.abs(p[i].x - p[j].x);
+      const oy = (size[i].h + size[j].h) / 2 + 8 - Math.abs(p[i].y - p[j].y);
+      if (ox <= 0 || oy <= 0) continue;
+      moved = true;
+      const fixI = nodes[i].role === "question", fixJ = nodes[j].role === "question";
+      const share = fixI ? [0, 1] : fixJ ? [1, 0] : [0.5, 0.5];
+      if (ox < oy) { const s = p[i].x < p[j].x ? -1 : 1; p[i].x += s * ox * share[0]; p[j].x -= s * ox * share[1]; }
+      else { const s = p[i].y < p[j].y ? -1 : 1; p[i].y += s * oy * share[0]; p[j].y -= s * oy * share[1]; }
+    }
+    p.forEach((q, i) => { q.x = Math.max(size[i].w / 2 + 4, Math.min(W - size[i].w / 2 - 4, q.x)); q.y = Math.max(size[i].h / 2 + 4, Math.min(H - size[i].h / 2 - 4, q.y)); });
+    if (!moved) break;
+  }
+  return p;
+}
+
+function nodeText(n) {
+  const label = n.kind === "topic" ? `#${n.name}` : n.name;
+  const t = n.title || "";
+  const sub = n.kind === "article" || n.kind === "annex" ? t.slice(0, 11) + (t.length > 11 ? "…" : "") : "";
+  return { label, sub, w: Math.max(label.length * 13, sub.length * 11.5) + 22, h: sub ? 40 : 28 };
+}
+
+function renderGraph(graph) {
+  if (!graph || !graph.nodes || graph.nodes.length < 3) return null;
+  const narrow = result.clientWidth < 560;
+  const W = narrow ? 600 : 760, H = narrow ? 760 : 560;
+  const { nodes, edges } = graph;
+  const texts = nodes.map(nodeText);
+  const pos = layoutGraph(nodes, W, H, texts);
+  const at = new Map(nodes.map((n, i) => [n.id, pos[i]]));
+  const relatedIds = new Map((graph.related || []).map((r, i) => [r.label, i]));
+  const laws = new Set(nodes.filter((n) => n.role === "ordinance").map((n) => n.id)).size;
+
+  const wrap = el("section", { class: "kg", "aria-labelledby": "kg-title" });
+  wrap.append(el("h2", { id: "kg-title" }, "연관 조례 지도"));
+  wrap.append(el("p", { class: "sub" },
+    `답변 근거에서 같은 대상자·용어·주제와 예외·제재·인용 관계를 따라 ${laws}개 조례의 관련 조항을 이었어요. 선에 마우스를 올리면 원문 근거가, 파란 테두리 조항을 누르면 원문이 보여요.`));
+
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", `연관 조례 그래프: ${nodes.filter((n) => n.kind !== "question").map((n) => n.name).join(", ")}`);
+  svg.innerHTML = `<defs><marker id="kg-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#9aa3ab"/></marker></defs>`;
+  const svgEl = (tag, attrs) => { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); return n; };
+
+  for (const e of edges) {
+    const a = at.get(e.src), b = at.get(e.dst);
+    if (!a || !b) continue;
+    const st = EDGE_STYLE[e.rel] || { stroke: "#b7bec5" };
+    const line = svgEl("line", { x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: st.stroke, "stroke-width": st.width || 1.4,
+      "stroke-dasharray": st.dash || "", "stroke-opacity": 0.9, ...(st.arrow ? { "marker-end": "url(#kg-arrow)" } : {}) });
+    const tip = svgEl("title", {}); tip.textContent = `${e.label}${e.reason ? ` — ${e.reason}` : ""}`; line.append(tip);
+    svg.append(line);
+    if (st.text) {
+      const t = svgEl("text", { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 - 4, "text-anchor": "middle", "font-size": 11,
+        "font-weight": 600, fill: st.stroke, stroke: "#fbfcfd", "stroke-width": 3, "paint-order": "stroke" });
+      t.textContent = e.label; t.append(tip.cloneNode(true)); svg.append(t);
+    }
+  }
+  nodes.forEach((n, i) => {
+    const s = KG_STYLE[n.role] || KG_STYLE.reference, q = at.get(n.id);
+    const g = svgEl("g", { class: "kg-node", transform: `translate(${q.x},${q.y})` });
+    const { label, sub, w, h } = texts[i];
+    g.append(svgEl("rect", { x: -w / 2, y: -h / 2, width: w, height: h, rx: n.kind === "topic" ? h / 2 : 7,
+      fill: s.fill, stroke: s.stroke, "stroke-width": 1.5, ...(s.dash ? { "stroke-dasharray": s.dash } : {}) }));
+    const t1 = svgEl("text", { y: sub ? -3 : 5, "text-anchor": "middle", "font-size": 13, "font-weight": 700, fill: s.ink });
+    t1.textContent = label; g.append(t1);
+    if (sub) { const t2 = svgEl("text", { y: 13, "text-anchor": "middle", "font-size": 11, fill: s.ink, "fill-opacity": 0.85 }); t2.textContent = sub; g.append(t2); }
+    const title = svgEl("title", {}); title.textContent = n.kind === "question" ? n.title : `${n.name}${n.title ? ` (${n.title})` : ""}`; g.append(title);
+    if (relatedIds.has(n.id)) {
+      g.classList.add("clickable"); g.setAttribute("tabindex", "0"); g.setAttribute("role", "button");
+      g.setAttribute("aria-label", `${n.name} ${n.title} 원문 보기`);
+      const open = () => { const d = document.getElementById(`rel-${relatedIds.get(n.id)}`); if (d) { d.open = true; d.scrollIntoView({ behavior: "smooth", block: "nearest" }); } };
+      g.addEventListener("click", open);
+      g.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); open(); } });
+    }
+    svg.append(g);
+  });
+  const canvas = el("div", { class: "kg-canvas" }); canvas.append(svg); wrap.append(canvas);
+
+  const legend = el("ul", { class: "legend", "aria-hidden": "true" });
+  [["cited", "답변 근거"], ["related", "연관 조항"], ["ordinance", "조례"], ["target", "대상자"], ["term", "정의 용어"],
+   ["topic", "주제"], ["reference", "같은 조례의 연결 조항"], ["law", "상위 법률"], ["delegation", "위임"]]
+    .filter(([r]) => nodes.some((n) => n.role === r))
+    .forEach(([r, t]) => legend.append(el("li", {}, `<i style="background:${KG_STYLE[r].fill};border-color:${KG_STYLE[r].stroke}"></i>${t}`)));
+  const rels = [...new Map(edges.filter((e) => (EDGE_STYLE[e.rel] || {}).text).map((e) => [e.rel, e.label])).entries()];
+  rels.forEach(([r, t]) => legend.append(el("li", {}, `<svg width="22" height="10" aria-hidden="true"><line x1="1" y1="5" x2="21" y2="5" stroke="${EDGE_STYLE[r].stroke}" stroke-width="2" stroke-dasharray="${EDGE_STYLE[r].dash || ""}"/></svg>${esc(t)}`)));
+  wrap.append(legend);
+
+  if (graph.related && graph.related.length) {
+    const box = el("div", { class: "related" });
+    box.append(el("h3", {}, `함께 볼 만한 다른 조례 조항 ${graph.related.length}개 · 답변 근거는 아니에요`));
+    graph.related.forEach((r, i) => {
+      const d = el("details", { class: "source", id: `rel-${i}` });
+      d.innerHTML = `<summary><span class="title">${esc(shortLabel(r.label))} (${esc(r.title)})</span>${ICON.chev}
+          <span class="meta">${(r.reasons || []).map((t) => `<span class="why">${esc(t)}</span>`).join("")}</span></summary>
+        <div class="body"><blockquote>${esc(plainClause(r.text || ""))}</blockquote>
+          ${r.source_url ? `<a class="link" href="${esc(r.source_url)}" target="_blank" rel="noopener">국가법령정보센터에서 원문 보기 ${ICON.ext}</a>` : ""}</div>`;
+      box.append(d);
+    });
+    wrap.append(box);
+  }
+  return wrap;
+}
+
+function renderState(question, kind, savedAt) {
+  const box = el("div", { class: `state state-${kind === "error" || kind === "aborted" ? "error" : "unknown"}` });
+  if (kind === "unknown") {
+    // 근거가 없을 때는 연관 조례 지도를 그리지 않습니다. 검색에만 걸린 조례를 보여 주면 관련 규정이 있다고 오해하기 쉽습니다.
+    box.innerHTML = `<h2>${ICON.info}확인 불가</h2>
+      <p>서울시 조례 6종에서 이 질문에 답할 근거를 찾지 못했어요. 관련 규정이 없다는 뜻은 아니에요.</p>
+      <p>자치구 조례나 국가 법령에 관한 내용이라면 120 다산콜재단에 문의해 주세요.</p>`;
+    live.textContent = "확인 불가. 조례에서 근거를 찾지 못했습니다.";
+    if (savedAt) { result.replaceChildren(echo(question), offlineNote(savedAt), box); return; }
+  } else if (kind === "offline") {
+    box.innerHTML = `<h2>${ICON.info}저장해 둔 질문만 답할 수 있어요</h2>
+      <p>지금은 네트워크 없이 미리 저장한 답변으로 시연하고 있어요. 위의 예시 질문을 눌러 주세요.</p>`;
+    live.textContent = "오프라인 시연 모드입니다. 저장해 둔 질문만 답할 수 있습니다.";
+  } else {
+    box.innerHTML = kind === "aborted"
+      ? `<h2>${ICON.alert}질문을 중단했어요</h2><p>다시 물어보려면 아래 버튼을 누르세요.</p>`
+      : `<h2>${ICON.alert}답변을 불러오지 못했어요</h2><p>서버와 연결하는 중에 문제가 생겼어요. 잠시 뒤 다시 시도해 주세요.</p>`;
+    const retry = el("button", { type: "button", class: "btn btn-quiet" }, "다시 시도");
+    retry.onclick = () => ask(question);
+    box.append(retry);
+    live.textContent = kind === "aborted" ? "질문을 중단했습니다." : "답변을 불러오지 못했습니다.";
+  }
+  result.replaceChildren(echo(question), box);
+}
+
+async function ask(question) {
+  controller?.abort();
+  controller = new AbortController();
+  submit.disabled = true; submit.textContent = "찾는 중…";
+  showLoading(question);
+  // 예시 질문 아래에 결과가 있어 모바일에서는 화면 밖이므로, 찾는 중 표시가 보이도록 올려 줍니다
+  result.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  try {
+    const res = await fetch("/demo/ask", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question }), signal: controller.signal });
+    if (!res.ok) throw new Error(String(res.status));
+    const data = await res.json();
+    if (data.missing) renderState(question, "offline");
+    else if (!data.citation || data.citation.length === 0) renderState(question, "unknown", data.offline && data.saved_at);
+    else renderAnswer(question, data);
+  } catch (e) {
+    renderState(question, e.name === "AbortError" ? "aborted" : "error");
+  } finally {
+    clearInterval(tick);
+    submit.disabled = false; submit.textContent = "질문하기";
+  }
+}
+
+form.addEventListener("submit", (e) => { e.preventDefault(); const q = input.value.trim(); if (q) ask(q); else input.focus(); });
+input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); } });
+document.querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => { input.value = b.dataset.q; ask(b.dataset.q); }));
+</script>
+</body>
+</html>

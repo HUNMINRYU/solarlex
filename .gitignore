@@ -1,0 +1,30 @@
+.env
+.venv/
+.tools-venv/
+__pycache__/
+*.pyc
+.DS_Store
+.omo/
+engine/results/
+engine/data/vectors_*.npy
+engine/data/solarlex.db
+engine/data/annex_files/
+
+# 강의·대회 원본 자료(저작권): 공개 저장소에 올리지 않음
+/*.pdf
+/*.zip
+/Upstage/
+# 실행 부산물
+engine/r*.log
+engine/remote_sample.log
+engine/.env.new
+engine/data_kit_orig/
+docs/pdf/out/*.html
+docs/pdf/out/*.png
+# 내부 문서: 저장소에 올리지 않음
+/AUDIT_전수조사.md
+/대회준비_제안.md
+# 작업 문서·발표 준비물·스타터킷 원본 설명: 공개 저장소에 올리지 않음
+/docs/
+/engine/README.md
+/engine/data/raw_laws/
