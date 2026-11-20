@@ -103,8 +103,6 @@ USES_TERM_MAX = 15   # 이보다 많은 조문에 나오는 용어('동물' 등)
 ANNEX_REF = re.compile(r"별표\s?(\d*)")
 QUOTED = re.compile(r"「([^」]+)」")
 AMEND_NOTE = re.compile(r"<(?:개정|신설|전문개정|삭제)[^>]*>|\[(?:본조신설|전문개정|제목개정)[^\]]*\]")
-# 개정 이력: 조문에 붙은 '<개정 2020.7.16>', '[본조신설 2025.1.3]', '삭제 <2025.3.27>' 표기. 한 표기에 날짜가 여러 개일 수 있습니다.
-# 멘토가 보여 준 법령 지식그래프 예시의 AMENDS · INTRODUCES · ABROGATES에 해당합니다(11/20 추가).
 REVISION_MARK = re.compile(r"[<\[]\s*(개정|전문개정|제목개정|신설|본조신설)\s*([\d.,\s]+)[>\]]|(삭제)\s*<\s*([\d.,\s]+)>")
 REVISION_REL = {"개정": "AMENDS", "전문개정": "AMENDS", "제목개정": "AMENDS",
                 "신설": "INTRODUCES", "본조신설": "INTRODUCES", "삭제": "ABROGATES"}
@@ -305,7 +303,6 @@ def build_graph(laws, topics, targets):
     for nid, kind, law, name, title, text in units:
         nodes.append((nid, kind, law, name, title))
         link(law, "HAS_ARTICLE" if kind == "article" else "HAS_ANNEX", nid)
-        # 개정 이력: (조례, 개정일)을 '개정' 노드로 만들고 그 개정이 고친·신설한·삭제한 조문으로 잇습니다
         marks = {}
         for m in REVISION_MARK.finditer(text):
             word = m.group(1) or m.group(3)
