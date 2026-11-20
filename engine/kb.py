@@ -8,6 +8,7 @@
           조문 사이: REFERS(참조) · EXCEPTION_TO(…에도 불구하고) · PENALIZES(위반 → 과태료) · APPLIES(준용)
           법령 사이: IS_LEGAL_BASIS_OF(상위법 → 조문) · REFERS(다른 조례 인용) · DELEGATES(시장·규칙에 위임)
           의미: DEFINES / USES_TERM(정의 용어) · BENEFITS / OBLIGES(대상자 → 감면·지원 / 금지·의무·과태료) · ABOUT(주제)
+          개정 이력: AMENDS(개정·전문개정·제목개정) · INTRODUCES(신설·본조신설) · ABROGATES(삭제) — 개정(조례, 날짜) → 조·별표
   questions  조항마다 Solar가 만든 예상 질문과 그 임베딩(질문 색인). learn.py가 채웁니다.
 
 관계 만드는 법 (멘토가 보여 준 법령 지식그래프 예시를 우리 조례 6종에 맞게 줄였습니다)
@@ -102,6 +103,12 @@ USES_TERM_MAX = 15   # 이보다 많은 조문에 나오는 용어('동물' 등)
 ANNEX_REF = re.compile(r"별표\s?(\d*)")
 QUOTED = re.compile(r"「([^」]+)」")
 AMEND_NOTE = re.compile(r"<(?:개정|신설|전문개정|삭제)[^>]*>|\[(?:본조신설|전문개정|제목개정)[^\]]*\]")
+# 개정 이력: 조문에 붙은 '<개정 2020.7.16>', '[본조신설 2025.1.3]', '삭제 <2025.3.27>' 표기. 한 표기에 날짜가 여러 개일 수 있습니다.
+# 멘토가 보여 준 법령 지식그래프 예시의 AMENDS · INTRODUCES · ABROGATES에 해당합니다(11/20 추가).
+REVISION_MARK = re.compile(r"[<\[]\s*(개정|전문개정|제목개정|신설|본조신설)\s*([\d.,\s]+)[>\]]|(삭제)\s*<\s*([\d.,\s]+)>")
+REVISION_REL = {"개정": "AMENDS", "전문개정": "AMENDS", "제목개정": "AMENDS",
+                "신설": "INTRODUCES", "본조신설": "INTRODUCES", "삭제": "ABROGATES"}
+REVISION_DATE = re.compile(r"(\d{4})\.\s?(\d{1,2})\.\s?(\d{1,2})")
 
 
 def connect():
@@ -298,6 +305,17 @@ def build_graph(laws, topics, targets):
     for nid, kind, law, name, title, text in units:
         nodes.append((nid, kind, law, name, title))
         link(law, "HAS_ARTICLE" if kind == "article" else "HAS_ANNEX", nid)
+        # 개정 이력: (조례, 개정일)을 '개정' 노드로 만들고 그 개정이 고친·신설한·삭제한 조문으로 잇습니다
+        marks = {}
+        for m in REVISION_MARK.finditer(text):
+            word = m.group(1) or m.group(3)
+            for y, mo, d in REVISION_DATE.findall(m.group(2) or m.group(4)):
+                date = f"{y}-{int(mo):02d}-{int(d):02d}"
+                marks.setdefault((REVISION_REL[word], date), []).append(word)
+        for (rel, date), words in marks.items():
+            rid = f"개정:{law}:{date}"
+            nodes.append((rid, "revision", law, date, f"{date} 개정"))
+            link(rid, rel, nid, ", ".join(f"{w} {words.count(w)}곳" for w in dict.fromkeys(words)))
         body = AMEND_NOTE.sub("", text)
         body = body.split(")", 1)[-1] if kind == "article" else body   # '제7조(제목)' 머리 빼기
         bodies[nid] = body

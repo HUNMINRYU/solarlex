@@ -1059,7 +1059,9 @@ def _short_law(law):
 REL_KO = {"HAS_ARTICLE": "조항", "HAS_ANNEX": "별표", "REFERS": "참조", "EXCEPTION_TO": "예외",
           "PENALIZES": "위반 시 제재", "APPLIES": "준용", "IS_LEGAL_BASIS_OF": "상위법 근거", "DELEGATES": "위임",
           "DEFINES": "용어 정의", "USES_TERM": "용어 사용", "BENEFITS": "혜택", "OBLIGES": "의무·제재",
-          "ABOUT": "주제", "근거": "답변 근거", "주제": "질문 주제", "대상": "질문 대상"}
+          "ABOUT": "주제", "근거": "답변 근거", "주제": "질문 주제", "대상": "질문 대상",
+          "AMENDS": "개정", "INTRODUCES": "신설", "ABROGATES": "삭제"}
+REVISION_RELS = ("AMENDS", "INTRODUCES", "ABROGATES")
 LINK_ORDER = ("EXCEPTION_TO", "PENALIZES", "APPLIES", "REFERS")   # 같은 조례 안 연결: 의미가 센 것부터
 
 
@@ -1140,6 +1142,8 @@ def related_graph(question, citation, limit=6, per_law=2):
         kind = info["kind"]
         if kind in ("topic", "law", "target", "delegation"):
             name = info["name"]
+        elif kind == "revision":
+            name = info["name"].replace("-", ".") + " 개정"
         elif kind == "term":
             name = f"“{info['name']}”"
         else:
@@ -1205,6 +1209,11 @@ def related_graph(question, citation, limit=6, per_law=2):
         for d in out(s, ("DELEGATES",))[:1]:
             add(d, "delegation")
             edge(s, "DELEGATES", d)
+        # 개정 이력: 근거 조문을 가장 최근에 고친(신설·삭제 포함) 개정 하나를 보여 줍니다
+        revs = sorted(into(s, REVISION_RELS), key=lambda x: nodes[x[1]]["name"], reverse=True)[:1]
+        for rel, src in revs:
+            add(src, "revision")
+            edge(src, rel, s)
 
     chunks = _load()[0]
     url = {c["law"]: c["source_url"] for c in chunks}

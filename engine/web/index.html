@@ -367,6 +367,7 @@ const KG_STYLE = {
   target:    { fill: "#f3ecfd", stroke: "#7a4fd1", ink: "#55309f" },
   term:      { fill: "#e6f6f7", stroke: "#16808a", ink: "#0e5b62" },
   delegation:{ fill: "#ffffff", stroke: "#9aa3ab", ink: "#6d7882", dash: "2 3" },
+  revision:  { fill: "#fdeef0", stroke: "#b4324a", ink: "#8a1f33", dash: "3 2" },
 };
 // 관계 종류별 선 모양. label은 서버(rag.REL_KO)가 보냅니다. text: 선 위에 글자를 쓸지
 const EDGE_STYLE = {
@@ -384,6 +385,9 @@ const EDGE_STYLE = {
   REFERS:        { stroke: "#9aa3ab", arrow: true, text: true },
   IS_LEGAL_BASIS_OF: { stroke: "#9aa3ab", dash: "4 3", arrow: true, text: true },
   DELEGATES:     { stroke: "#9aa3ab", dash: "2 3", arrow: true, text: true },
+  AMENDS:        { stroke: "#b4324a", dash: "3 2", arrow: true, text: true },
+  INTRODUCES:    { stroke: "#b4324a", dash: "3 2", arrow: true, text: true },
+  ABROGATES:     { stroke: "#b4324a", dash: "3 2", arrow: true, text: true },
 };
 
 // 방사형 배치: 가운데 질문, 안쪽 고리에 주제, 조례마다 부채꼴 구역을 나눠 그 조례의 조항을 모으고, 마지막에 겹치는 상자를 밀어냅니다.
@@ -397,13 +401,13 @@ function layoutGraph(nodes, W, H, size) {
   const base = new Map(laws.map((l, i) => [l, -Math.PI / 2 + i * sector]));
   const p = nodes.map(() => ({ x: cx, y: cy }));
   const put = (i, a, r) => { p[i] = { x: cx + rx * r * Math.cos(a), y: cy + ry * r * Math.sin(a) }; };
-  const ringOf = { cited: 0.45, reference: 0.74, related: 0.7, law: 0.95, delegation: 0.95, ordinance: 1 };
+  const ringOf = { cited: 0.45, reference: 0.74, related: 0.7, law: 0.95, delegation: 0.95, revision: 0.95, ordinance: 1 };
   const inner = (n) => n.role === "topic" || n.role === "target" || n.role === "term";
   const members = new Map();
   nodes.forEach((n, i) => {
     if (n.role === "question" || inner(n)) return;
     const law = n.role === "ordinance" ? n.id : n.role === "law" || n.role === "delegation" ? seedLaw : n.law;
-    const key = `${law}|${["reference", "law", "delegation"].includes(n.role) ? "related" : n.role}`;
+    const key = `${law}|${["reference", "law", "delegation", "revision"].includes(n.role) ? "related" : n.role}`;
     if (!members.has(key)) members.set(key, []);
     members.get(key).push(i);
   });
@@ -500,7 +504,7 @@ function renderGraph(graph) {
 
   const legend = el("ul", { class: "legend", "aria-hidden": "true" });
   [["cited", "답변 근거"], ["related", "연관 조항"], ["ordinance", "조례"], ["target", "대상자"], ["term", "정의 용어"],
-   ["topic", "주제"], ["reference", "같은 조례의 연결 조항"], ["law", "상위 법률"], ["delegation", "위임"]]
+   ["topic", "주제"], ["reference", "같은 조례의 연결 조항"], ["law", "상위 법률"], ["delegation", "위임"], ["revision", "개정 이력"]]
     .filter(([r]) => nodes.some((n) => n.role === r))
     .forEach(([r, t]) => legend.append(el("li", {}, `<i style="background:${KG_STYLE[r].fill};border-color:${KG_STYLE[r].stroke}"></i>${t}`)));
   const rels = [...new Map(edges.filter((e) => (EDGE_STYLE[e.rel] || {}).text).map((e) => [e.rel, e.label])).entries()];
