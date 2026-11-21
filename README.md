@@ -86,7 +86,7 @@ cp .env.example .env                              # UPSTAGE_API_KEY 입력
 .venv/bin/python -X utf8 fetch_ordinances.py     # 1. 조례 6종 수집 → data/ordinances.json
 .venv/bin/python -X utf8 parse_annex.py          # 2. 별표를 Document Parse로 읽기 → data/annex/
 .venv/bin/python -X utf8 build_index.py          # 3. 조각·임베딩 → 벡터 DB, 지식그래프(data/solarlex.db)
-.venv/bin/python -X utf8 learn.py                # 4. 학습: 조항별 예상 질문 색인
+.venv/bin/python -X utf8 learn.py                # 4. 예상 질문 색인: 조항별 예상 질문
 .venv/bin/uvicorn app:app --port 8000            # 5. 서버 실행
 ```
 
@@ -151,7 +151,7 @@ cd engine
 | `USE_REFINE` | 답의 문장과 더 잘 맞는 항으로 인용 바로잡기 | `1` |
 | `HYBRID_WEIGHT` | 1단계 검색에서 임베딩 점수 비중(나머지는 키워드). 킷은 0.7 | `0.9` |
 | `EXPAND_WITH_HITS` | 하위 검색어를 만들 때 1차 검색 조항도 보여 주기(멘토링 제안). dev 1.000→0.983으로 내려가 끔(2026-11-19) | `0` |
-| `QINDEX_WEIGHT` | 학습한 예상 질문 색인 가중치. dev에서 0.1 이상은 98→95%로 내려가 끔(`learn.py --tune`, 2026-11-19) | `0` |
+| `QINDEX_WEIGHT` | 예상 질문 색인 가중치. dev에서 0.1 이상은 98→95%로 내려가 끔(`learn.py --tune`, 2026-11-19) | `0` |
 | `USE_ANNEX_LINK` | 별표와 그 별표를 인용하는 조항을 함께 근거에 넣기 | `1` |
 | `USE_LAW_HINT` | 질문에 조례 이름이 있으면 그 조례 조각에 가산점 | `1` |
 | `USE_ANNEX_NUMCHECK` | 별표를 인용한 숫자가 별표 원문에 없으면 다시 답하기 | `1` |
@@ -163,7 +163,7 @@ cd engine
 ## Architecture
 
 ```
-[데이터 준비·학습, 한 번] → 모두 data/solarlex.db(SQLite) 한 파일에 저장
+[데이터 준비·색인, 한 번] → 모두 data/solarlex.db(SQLite) 한 파일에 저장
 법제처 OPEN API → 조례 6종 원문(조·항·호) ─┬→ 조각 546개(항 단위, 긴 항은 호 단위) → Solar Embedding → 벡터 DB(chunks)
                                          ├→ 상위법·시행령·시행규칙 → 참고 조각 2,312개(검증용, 인용하지 않음)
                                          ├→ 별표(요금표 등) → Document Parse → 표 조각
@@ -171,7 +171,7 @@ cd engine
                                          │   구조(조례→조·별표), 개정 이력(개정·신설·삭제), 조문 사이(참조·예외·위반 시 제재·준용),
                                          │   법령 사이(상위법 근거·다른 조례 인용·위임), 정의 용어(정의·사용),
                                          │   대상자→혜택·의무(Solar 추출 + 원문 대조 검증), 주제(Solar 분류)
-                                         └→ 학습: Solar가 조항마다 시민 말투 예상 질문 3개 생성 → 질문 색인(questions)
+                                         └→ 예상 질문: Solar가 조항마다 시민 말투 예상 질문 3개 생성 → 질문 색인(questions)
 
 [시연 화면, POST /demo/ask] 답변 + 근거 원문 + 연관 조례 지도
 근거 조항 → 지식그래프에서 같은 주제·인용으로 이어진 다른 조례 조항(질문과의 의미 유사도 순) → 그래프 그림 + 목록
@@ -200,7 +200,7 @@ cd engine
 | `engine/parse_annex.py` | 별표를 Document Parse로 읽기(키 없을 때 대안: `parse_annex_rhwp.py`) |
 | `engine/build_index.py` | 조각 만들기(조례명 머리글, 호 단위 분할, 개정 표기 제거) + 임베딩 → 벡터 DB |
 | `engine/kb.py` | 법령 지식 DB(SQLite): 벡터 DB, 지식그래프(조례·조·별표·주제·대상자·용어·상위법, 관계 16종), 예상 질문 색인. 관계 목록은 파일 위 설명 |
-| `engine/learn.py` | 학습: Solar로 조항별 예상 질문 생성·임베딩, `--tune`으로 가중치 측정 |
+| `engine/learn.py` | 예상 질문 색인: Solar로 조항별 예상 질문 생성·임베딩, `--tune`으로 가중치 측정 |
 | `engine/check.py` | 셀프 채점기(근거 정확도, 함정 정답률, 내용 일치, 인용 초과 감점, 검색 포함률) |
 | `engine/demo.py` | 베이스라인 시연 장면(annex, llm-only, chunk, trap) |
 | `engine/eval/` | 자체 평가셋 60문항, 구어체 평가셋 40문항, 새 평가셋 39문항과 검증 스크립트 |
