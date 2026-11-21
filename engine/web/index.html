@@ -541,6 +541,47 @@
   }
   /* ---- 4차: 다크 모드 버튼 ---- */
   :root { --topbar: rgba(255, 255, 255, .92); --tab-bg: #e9edf4; --cnt-bg: rgba(255, 255, 255, .7); --quote-bg: #f3f6fb; color-scheme: light; }
+  .top-actions { display: flex; align-items: center; gap: 10px; }
+  .quiz-open { min-height: 36px; padding: 0 14px; font-size: 0.875rem; font-weight: 600; }
+  @media (max-width: 47.99rem) { .quiz-open { min-height: 32px; padding: 0 12px; } }
+  #quiz { width: min(36rem, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 0; border: 1px solid var(--line-soft); border-radius: 20px; background: var(--bg); color: var(--ink); box-shadow: 0 24px 60px rgba(0, 0, 0, .22); }
+  #quiz::backdrop { background: rgba(15, 18, 22, .5); }
+  .quiz-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--line-soft); }
+  .quiz-head h2 { margin: 0; font-size: 1.0625rem; }
+  .quiz-close { width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--ink-2); font-size: 1.375rem; line-height: 1; cursor: pointer; }
+  .quiz-close:hover { background: var(--bg-soft); color: var(--ink); }
+  #quiz-body { padding: 20px; }
+  .quiz-step { display: flex; align-items: center; gap: 10px; margin: 0 0 12px; font-size: 0.875rem; font-weight: 600; color: var(--ink-3); }
+  .quiz-step .law { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); }
+  .quiz-step .dot, .quiz-review .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+  .quiz-q { margin: 0 0 16px; font-size: 1.125rem; font-weight: 700; line-height: 1.5; }
+  .quiz-ask { margin: -8px 0 14px; font-size: 0.875rem; color: var(--ink-3); }
+  .quiz-choices { margin: 0; padding: 0; border: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .quiz-choices label { position: relative; display: grid; place-items: center; gap: 2px; min-height: 104px; padding: 12px; border: 1px solid var(--line); border-radius: 16px; cursor: pointer; }
+  .quiz-choices .ox { font-size: 2.5rem; font-weight: 800; line-height: 1; }
+  .quiz-choices label:has(input:focus-visible) { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .quiz-choices label:has(input:enabled:checked) { border-color: var(--primary); background: var(--primary-wash); }
+  .quiz-choices label:has(input:disabled) { cursor: default; }
+  .quiz-choices label.right { border-color: var(--primary); background: var(--primary-wash); }
+  .quiz-choices label.wrong { border-color: var(--danger-line); background: var(--danger-wash); }
+  .quiz-choices .mark { min-height: 1.2em; font-size: 0.8125rem; font-weight: 700; white-space: nowrap; }
+  .quiz-choices .right .mark { color: var(--primary-ink); }
+  .quiz-choices .wrong .mark { color: var(--danger-ink); }
+  .quiz-verdict { margin: 16px 0 6px; font-weight: 700; }
+  .quiz-why { margin: 0 0 10px; color: var(--ink-2); font-size: 0.9375rem; }
+  .quiz-source { margin: 0 0 4px; font-size: 0.875rem; }
+  .quiz-source summary { cursor: pointer; color: var(--primary-ink); font-weight: 600; }
+  .quiz-source p { margin: 8px 0 0; padding: 12px; max-height: 12rem; overflow: auto; border-radius: 10px; background: var(--bg-soft); color: var(--ink-2); white-space: pre-wrap; }
+  .quiz-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+  .quiz-actions .btn { min-height: 44px; }
+  .quiz-score { margin: 0; font-size: 1.5rem; font-weight: 800; }
+  .quiz-score + p { margin: 4px 0 16px; color: var(--ink-2); }
+  .quiz-card { display: block; width: min(100%, 16rem); margin: 0 auto 16px; border: 1px solid var(--line-soft); border-radius: 14px; }
+  .quiz-review { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: 0.9375rem; }
+  .quiz-review li { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: baseline; }
+  .quiz-review .res { font-weight: 700; }
+  .quiz-review .miss .res { color: var(--danger-ink); }
+  .quiz-review small { grid-column: 2; color: var(--ink-3); }
   .theme-toggle { display: inline-grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 1px solid var(--line-soft); border-radius: 50%; background: var(--card); color: var(--ink-2); cursor: pointer; }
   .theme-toggle:hover { color: var(--ink); border-color: var(--line); }
   .theme-toggle .i-sun { display: none; }
@@ -697,7 +738,8 @@
 <header class="topbar">
   <div class="wrap">
     <a class="brand" href="./" id="home-link"><span class="mark" aria-hidden="true"><i style="--c:var(--ord-주차장)"></i><i style="--c:var(--ord-동물보호)"></i><i style="--c:var(--ord-자전거)"></i><i style="--c:var(--ord-도시공원)"></i><i style="--c:var(--ord-청년)"></i><i style="--c:var(--ord-금연)"></i></span>SolarLex</a>
-    <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false" title="다크 모드"><svg class="i-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><svg class="i-sun" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="sr-only">다크 모드</span></button>
+    <div class="top-actions"><button type="button" class="btn btn-quiet quiz-open" id="quiz-open">조례 퀴즈</button>
+    <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false" title="다크 모드"><svg class="i-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><svg class="i-sun" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="sr-only">다크 모드</span></button></div>
   </div>
 </header>
 
@@ -749,6 +791,11 @@
   <p id="live" class="sr-only" role="status" aria-atomic="true"></p>
   <section id="result" aria-label="답변"></section>
 </main>
+
+<dialog id="quiz" aria-labelledby="quiz-title">
+  <div class="quiz-head"><h2 id="quiz-title">서울시 조례 퀴즈</h2><button type="button" class="quiz-close" id="quiz-close" aria-label="퀴즈 닫기">×</button></div>
+  <div id="quiz-body"></div>
+</dialog>
 
 <footer>
   <div class="wrap">
@@ -1895,6 +1942,108 @@ else if (guideInAddress()) openGuide();
 })();
 
 // ---- 다크 모드 ----
+const quizBox = $("#quiz"), quizBody = $("#quiz-body");
+let quiz = null;
+
+async function startQuiz() {
+  quizBody.replaceChildren(el("p", { class: "hint", role: "status" }, "문제를 불러오는 중이에요."));
+  const res = await fetch("/demo/quiz");
+  if (!res.ok) { quizBody.replaceChildren(el("p", { role: "status" }, "문제를 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.")); return; }
+  quiz = { items: (await res.json()).items, picks: [] };
+  quizItem();
+}
+
+function quizItem() {
+  const at = quiz.picks.length, item = quiz.items[at], last = at === quiz.items.length - 1;
+  const form = el("form", { novalidate: "" }, `<p class="quiz-step"><span>${at + 1} / ${quiz.items.length}</span><span class="law"><span class="dot" style="--c:${ordColor(item.law)}"></span>${esc(ordShort(item.law))}</span></p>
+    <p class="quiz-q" id="quiz-q">${esc(item.question)}</p>
+    <p class="quiz-ask">맞으면 O, 틀리면 X를 골라 주세요.</p>
+    <fieldset class="quiz-choices" aria-labelledby="quiz-q">${item.choices.map((choice, i) => `<label><input type="radio" name="pick" value="${i}" class="sr-only"><span class="ox">${esc(choice)}</span><span class="mark"></span></label>`).join("")}</fieldset>
+    <div class="quiz-after" role="status"></div>
+    <div class="quiz-actions"><button type="submit" class="btn btn-primary" disabled>정답 확인</button></div>`);
+  const submit = form.querySelector("[type=submit]");
+  form.addEventListener("change", () => { submit.disabled = false; });
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (form.dataset.checked) { quiz.picks.length < quiz.items.length ? quizItem() : quizResult(); return; }
+    const pick = Number(new FormData(form).get("pick")), correct = pick === item.answer;
+    form.dataset.checked = "1";
+    quiz.picks.push(pick);
+    form.querySelectorAll("label").forEach((label, i) => {
+      label.querySelector("input").disabled = true;
+      if (i === item.answer) { label.classList.add("right"); label.querySelector(".mark").textContent = "정답"; }
+      else if (i === pick) { label.classList.add("wrong"); label.querySelector(".mark").textContent = "내가 고른 답"; }
+    });
+    form.querySelector(".quiz-after").innerHTML = `<p class="quiz-verdict">${correct ? "정답이에요." : `아쉬워요. 정답은 ${esc(item.choices[item.answer])}예요.`}</p>
+      <p class="quiz-why">${esc(item.explanation)}</p>
+      <details class="quiz-source"><summary>근거 원문 · ${esc(shortArticle(item.label, item.law))}</summary><p>${esc(item.text)}</p></details>`;
+    const more = el("button", { type: "button", class: "btn btn-quiet" }, "이 내용 자세히 묻기");
+    more.onclick = () => { quizBox.close(); ask(item.question); };
+    form.querySelector(".quiz-actions").prepend(more);
+    submit.textContent = last ? "결과 보기" : "다음 문제";
+    submit.focus();
+  });
+  quizBody.replaceChildren(form);
+}
+
+async function quizCard(right) {
+  const items = quiz.items, size = 1080, canvas = el("canvas", { width: size, height: size }), c = canvas.getContext("2d");
+  const style = getComputedStyle(document.documentElement), family = getComputedStyle(document.body).fontFamily;
+  const color = (name) => style.getPropertyValue(name).trim();
+  const line = `${dateKo(items[0].effective_date)} 시행 조례 기준 · ${location.host}`;
+  const words = `SolarLex 서울시 조례 퀴즈 문항 중 정답 ${right} ${items.length} ${line}`;
+  await Promise.all([500, 700, 800].map((weight) => document.fonts.load(`${weight} 48px ${family}`, words)));
+  c.fillStyle = "#ffffff"; c.fillRect(0, 0, size, size);
+  c.fillStyle = "#256ef4"; c.fillRect(0, 0, size, 20);
+  ORD.forEach((key, i) => { c.fillStyle = color(`--ord-${key}`); c.beginPath(); c.arc(96 + i * 34, 132, 12, 0, Math.PI * 2); c.fill(); });
+  c.textBaseline = "middle"; c.fillStyle = "#1e2124";
+  c.font = `700 44px ${family}`; c.fillText("SolarLex", 96 + ORD.length * 34 + 8, 134);
+  c.textAlign = "center";
+  c.font = `700 56px ${family}`; c.fillStyle = "#464c53"; c.fillText("서울시 조례 퀴즈", size / 2, 330);
+  c.font = `800 260px ${family}`; c.fillStyle = "#256ef4"; c.fillText(`${right} / ${items.length}`, size / 2, 540);
+  c.font = `500 48px ${family}`; c.fillStyle = "#1e2124"; c.fillText(`${items.length}문항 중 ${right}문항 정답`, size / 2, 730);
+  items.forEach((item, i) => {
+    const x = size / 2 + (i - (items.length - 1) / 2) * 96, hit = quiz.picks[i] === item.answer;
+    c.beginPath(); c.arc(x, 850, 30, 0, Math.PI * 2);
+    c.lineWidth = 6; c.strokeStyle = hit ? "#256ef4" : "#cdd1d5"; c.fillStyle = hit ? "#256ef4" : "#ffffff"; c.fill(); c.stroke();
+    c.strokeStyle = hit ? "#ffffff" : "#8a949e"; c.lineCap = "round"; c.beginPath();
+    if (hit) { c.moveTo(x - 13, 850); c.lineTo(x - 3, 861); c.lineTo(x + 14, 839); }
+    else { c.moveTo(x - 10, 840); c.lineTo(x + 10, 860); c.moveTo(x + 10, 840); c.lineTo(x - 10, 860); }
+    c.stroke();
+  });
+  c.font = `500 34px ${family}`; c.fillStyle = "#6d7882"; c.fillText(line, size / 2, 990);
+  return new Promise((done) => canvas.toBlob(done, "image/png"));
+}
+
+async function quizResult() {
+  const items = quiz.items, right = items.filter((item, i) => quiz.picks[i] === item.answer).length;
+  const cheer = right === items.length ? "다 맞혔어요. 조례를 잘 알고 계시네요." : right * 2 >= items.length ? "꽤 알고 계시네요. 틀린 문제는 아래에서 다시 볼 수 있어요." : "이제부터 알아 가면 돼요. 아래에서 정답을 확인해 보세요.";
+  const box = el("div", {}, `<p class="quiz-score" role="status">${items.length}문항 중 ${right}문항 정답</p><p>${cheer}</p>`);
+  const review = el("ul", { class: "quiz-review" });
+  items.forEach((item, i) => {
+    const hit = quiz.picks[i] === item.answer;
+    review.append(el("li", hit ? {} : { class: "miss" }, `<span class="res">${hit ? "맞음" : "틀림"}</span><span>${esc(item.question)}</span><small>정답 ${esc(item.choices[item.answer])} · ${esc(shortArticle(item.label, item.law))}</small>`));
+  });
+  const actions = el("div", { class: "quiz-actions" });
+  const again = el("button", { type: "button", class: "btn btn-quiet" }, "다시 풀기");
+  again.onclick = startQuiz;
+  actions.append(again);
+  box.append(review, actions);
+  quizBody.replaceChildren(box);
+  const file = new File([await quizCard(right)], "solarlex-quiz.png", { type: "image/png" }), address = URL.createObjectURL(file);
+  box.querySelector(".quiz-score + p").after(el("img", { class: "quiz-card", src: address, alt: `서울시 조례 퀴즈 결과: ${items.length}문항 중 ${right}문항 정답` }));
+  actions.append(el("a", { class: "btn btn-quiet", href: address, download: file.name }, "이미지 저장"));
+  if (navigator.canShare?.({ files: [file] })) {
+    const share = el("button", { type: "button", class: "btn btn-primary" }, "이미지로 공유");
+    share.onclick = () => navigator.share({ files: [file] }).catch((e) => { if (e.name !== "AbortError") throw e; });
+    actions.append(share);
+  }
+}
+
+$("#quiz-open").addEventListener("click", () => { quizBox.showModal(); startQuiz(); });
+$("#quiz-close").addEventListener("click", () => quizBox.close());
+quizBox.addEventListener("click", (e) => { if (e.target === quizBox) quizBox.close(); });
+
 const themeBtn = $("#theme-toggle");
 const applyTheme = (dark) => {
   if (dark) document.documentElement.dataset.theme = "dark"; else delete document.documentElement.dataset.theme;

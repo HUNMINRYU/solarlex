@@ -35,6 +35,7 @@ import config
 import guide
 import kb
 import pdf
+import quiz
 import rag
 import voice
 
@@ -43,6 +44,7 @@ app = FastAPI(title="서울시 조례 Q&A")
 app.mount("/fonts", StaticFiles(directory=config.ROOT / "web" / "fonts"), name="fonts")
 log = logging.getLogger("uvicorn.error")
 MAX_PDF_REQUEST_BYTES = 300_000
+QUIZ_ITEMS = 5
 COSTLY_PATHS = {"/demo/ask", "/demo/guide/questions", "/demo/answer.pdf", "/demo/stt", "/demo/tts"}
 COSTLY_REQUESTS_PER_WINDOW, WINDOW_SEC, MAX_TRACKED_VISITORS = 20, 60, 10_000
 recent_costly_requests = collections.defaultdict(collections.deque)
@@ -146,6 +148,11 @@ async def demo_answer_pdf(request: Request):
 @app.get("/demo/stats")
 def demo_stats(situation: str = ""):
     return guide.answers_by_ordinance(situation)
+
+
+@app.get("/demo/quiz")
+def demo_quiz():
+    return {"items": quiz.pick(QUIZ_ITEMS)}
 
 
 VOICE_OFF = JSONResponse({"error": "voice_off"}, status_code=503)
