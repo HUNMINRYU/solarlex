@@ -37,7 +37,7 @@ SCHEMA = {"type": "json_schema", "json_schema": {"name": "quiz_item", "strict": 
     "type": "object", "required": ["true", "false", "explanation"], "additionalProperties": False,
     "properties": {"true": {"type": "string"}, "false": {"type": "string"}, "explanation": {"type": "string"}}}}}
 ASK = ("퀴즈 문장이 다루는 내용을 시민이 서울시 조례 상담 창구에 물어볼 질문 한 문장으로 바꾼다. "
-       "'서울'을 넣어 쉬운 말로 쓰고, 답이 되는 숫자는 넣지 않는다(예: '서울 금연구역에서 담배를 피우면 과태료가 얼마인가요?'). 결과는 JSON으로 낸다.")
+       "'서울'을 넣어 쉬운 말로 쓰고, 답이 되는 숫자는 넣지 않는다. 문장에 없는 내용(처벌, 과태료, 신청 방법 등)은 묻지 않고, 문장이 말하는 것이 되는지·해야 하는지를 묻는다(예: '서울 금연구역에서 담배를 피우면 과태료가 얼마인가요?'). 결과는 JSON으로 낸다.")
 ASK_SCHEMA = {"type": "json_schema", "json_schema": {"name": "quiz_ask", "strict": True, "schema": {
     "type": "object", "required": ["question"], "additionalProperties": False, "properties": {"question": {"type": "string"}}}}}
 JUDGE = ("조항 원문만 근거로 문장을 판정한다. 문장이 원문 규정과 같거나, 숫자가 달라도 원문 규정에서 논리적으로 따라 나오는 말이면 O"
