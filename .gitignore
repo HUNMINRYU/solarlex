@@ -28,3 +28,4 @@ docs/pdf/out/*.png
 /docs/
 /engine/README.md
 /engine/data/raw_laws/
+engine/data/usage.db

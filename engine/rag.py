@@ -207,8 +207,11 @@ EXPAND_SCHEMA = {
         "strict": True,
         "schema": {
             "type": "object",
-            "properties": {"queries": {"type": "array", "items": {"type": "string"}, "maxItems": 3}},
-            "required": ["queries"],
+            "properties": {"event_time": {"type": "string"},
+                           "rule_wanted": {"type": "string"},
+                           "rule_as_of": {"type": "string", "enum": ["now", "earlier", "later"]},
+                           "queries": {"type": "array", "items": {"type": "string"}, "maxItems": 3}},
+            "required": ["event_time", "rule_wanted", "rule_as_of", "queries"],
             "additionalProperties": False,
         },
     },
@@ -232,10 +235,18 @@ def expand_queries(question, hits=None):
             "너는 서울특별시 조례 검색 도우미다. 질문에 답하려면 찾아야 할 조례 조항을 떠올리고, "
             "그 조항을 찾기 위한 검색어를 조문에 쓰일 법조문 용어로 2~3개 만든다. "
             "시민이 쓰는 말은 조문 용어로 바꾼다(월세→차임, 보증금→주택임차보증금, 따릉이→공공자전거, 할인→감면, 주차비→주차요금, 벌금→과태료). "
-            "원칙 조항과 함께 예외·감면 중복·제재(과태료)·절차 조항이 필요하면 각각 따로 검색어를 만든다. 결과는 JSON으로 낸다.")},
+            "원칙 조항과 함께 예외·감면 중복·제재(과태료)·절차 조항이 필요하면 각각 따로 검색어를 만든다. "
+            "가진 조례는 지금 시행 중인 본 하나뿐이라, 질문이 어느 때의 규정을 알고 싶어 하는지 가린다. "
+            "event_time에는 질문자가 겪은 일이나 물건·사람의 내력에 붙은 때를 적는다(예: '지난달에 이사함', '5년 전에 딴 자격증', '오래된 건물'). 없으면 빈 문자열. "
+            "rule_wanted에는 질문자가 알고 싶은 규정을 한 구절로 적는다(예: '지금 신청할 때의 자격', '2015년 당시의 이용료'). "
+            "rule_as_of는 그 규정의 기준 시점이다. 지금 적용되는 규정을 알고 싶으면 now다. 일이 과거에 있었어도 지금 어떻게 되는지 묻으면 now다. "
+            "지나간 때에 규정이 어땠는지('2015년에는 얼마였나', '지난해에는 어땠나', '바뀌기 전에는', '옛날에는 무료였다던데')를 물으면 earlier, "
+            "앞으로 바뀔 규정('다음 달부터 어떻게 바뀌나')을 물으면 later다. "
+            "결과는 JSON으로 낸다.")},
         {"role": "user", "content": user}],
         response_format=EXPAND_SCHEMA)
-    return [q for q in json.loads(raw)["queries"] if q.strip()]
+    reading = json.loads(raw)
+    return {"asks_other_time": reading["rule_as_of"] != "now", "queries": [q for q in reading["queries"] if q.strip()]}
 
 
 PICK_SCHEMA = {"type": "json_schema", "json_schema": {"name": "pick", "strict": True, "schema": {
@@ -368,13 +379,15 @@ def link_annexes(hits, limit=2):
     return hits + added
 
 
-def retrieve_expanded(question, top_k=config.TOP_K, per_query=config.EXPAND_PER_QUERY):
+def retrieve_expanded(question, queries=None, top_k=config.TOP_K, per_query=config.EXPAND_PER_QUERY):
     """원 질문 검색 결과에 하위 검색어 결과를 덧붙입니다. 조항 중복은 제거합니다."""
     hits = retrieve(question, top_k)
     if not config.USE_EXPAND:
         return hits
+    if queries is None:
+        queries = expand_queries(question, hits if config.EXPAND_WITH_HITS else None)["queries"]
     seen = {h["label"] for h in hits}
-    for q in expand_queries(question, hits if config.EXPAND_WITH_HITS else None):
+    for q in queries:
         for h in retrieve(q, per_query):
             if h["label"] not in seen:
                 seen.add(h["label"])
@@ -883,7 +896,10 @@ def _guide_clauses(question, kind, cited, hits):
 
 def _answer_once(question):
     import upstage
-    hits = retrieve_expanded(question)
+    reading = expand_queries(question) if config.USE_EXPAND and not config.EXPAND_WITH_HITS else None
+    if reading and reading["asks_other_time"]:
+        return dict(UNKNOWN), [], False
+    hits = retrieve_expanded(question, reading and reading["queries"])
     if config.USE_VERIFY and hits and hits[0]["cos"] is not None and hits[0]["cos"] < config.MIN_SCORE:
         return dict(UNKNOWN), [], False
     if config.USE_REFERENCE:

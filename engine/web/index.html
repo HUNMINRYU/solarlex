@@ -108,7 +108,6 @@
   .listen[hidden] { display: none; }
   .contact { display: flex; flex-direction: column; gap: 2px; margin: 16px 0 0; font-size: 0.9375rem; color: var(--ink-2); }
   .contact a { color: var(--primary-ink); font-weight: 600; text-decoration: none; white-space: nowrap; }
-  .contact small { font-size: 0.8125rem; color: var(--ink-3); }
   .next-questions { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 20px; }
   .next-questions p { margin: 0; font-weight: 600; }
   .next-questions .btn-quiet { margin-top: 0; height: auto; min-height: 40px; padding: 8px 16px; text-align: left; white-space: normal; }
@@ -193,8 +192,6 @@
   .ref { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px 0 6px; border-radius: 8px; border: 0; background: var(--primary-wash); color: var(--primary-ink); font-size: 0.9375rem; font-weight: 700; cursor: pointer; }
   .ref:hover { background: #dbe7fd; }
   .ref .n { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 6px; background: var(--primary-ink); color: #fff; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
-  .trust { display: flex; align-items: flex-start; gap: 8px; margin: 20px 0 0; font-size: 0.8125rem; color: var(--ink-3); }
-  .trust svg { flex: none; margin-top: 2px; }
 
   .cross { margin-top: 24px; padding: 18px 20px; border-radius: 12px; background: var(--bg-soft); }
   .cross h2 { margin: 0; font-size: 1rem; font-weight: 700; }
@@ -414,7 +411,7 @@
   .avatar i { width: 3px; height: 14px; border-radius: 2px; }
   .avatar i:nth-child(1) { background: var(--ord-주차장); } .avatar i:nth-child(2) { background: var(--ord-동물보호); } .avatar i:nth-child(3) { background: var(--ord-자전거); }
   .avatar i:nth-child(4) { background: var(--ord-도시공원); } .avatar i:nth-child(5) { background: var(--ord-청년); } .avatar i:nth-child(6) { background: var(--ord-금연); }
-  .answer-head .detail, .answer-head .refs, .answer-head .trust { max-width: 46rem; }
+  .answer-head .detail, .answer-head .refs { max-width: 46rem; }
   .ref { border-radius: 999px; }
   .ref .n { border-radius: 50%; }
   .offline { border: 0; border-radius: 999px; padding: 10px 20px; }
@@ -499,7 +496,6 @@
   .bot-card { padding: 24px 28px 26px; }
   .bot-col > .offline { display: inline-flex; margin: 0 0 10px; padding: 8px 16px; font-size: 0.875rem; }
   .bot-col > .tabs { margin-top: 28px; }
-  .state .about { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--warn-line); font-size: 0.9375rem; color: var(--ink-2); }
   @media (max-width: 47.99rem) {
     body:not(.asked) main.wrap { min-height: calc(100svh - 56px - 220px); }
     .ask, body.asked .ask { grid-template-columns: 1fr; grid-template-areas: "input" "scope" "btn"; padding: 14px; }
@@ -588,11 +584,10 @@
   .conclusion { font-size: 1.75rem; line-height: 1.4; letter-spacing: -0.02em; }
   .conclusion.long { font-size: 1.375rem; line-height: 1.5; }
   .detail { margin-top: 14px; font-size: 1.0625rem; line-height: 1.8; color: var(--ink-2); }
-  .answer-head .detail, .answer-head .refs, .answer-head .trust { max-width: none; }
+  .answer-head .detail, .answer-head .refs { max-width: none; }
   .refs { margin-top: 18px; }
   .ref { min-height: 32px; font-size: 0.875rem; font-weight: 600; }
   .ref .n { width: 22px; height: 22px; font-size: 0.75rem; }
-  .trust { margin-top: 16px; }
   .state h2, .state-unknown h2 { font-size: 1.375rem; }
   .state p { font-size: 1rem; line-height: 1.75; }
   @media (max-width: 47.99rem) {
@@ -619,6 +614,55 @@
     .loading .status { gap: 8px; font-size: 1.0625rem; }
     .loading .status small { font-size: 0.875rem; }
   }
+
+  .modes { display: flex; justify-content: center; gap: 4px; width: fit-content; margin: 0 auto 20px; padding: 4px; border-radius: 999px; background: var(--bg-soft); }
+  .modes button { min-height: 40px; padding: 0 20px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-2); font: inherit; font-size: 0.9375rem; font-weight: 600; cursor: pointer; }
+  .modes button[aria-pressed="true"] { background: var(--primary); color: #fff; }
+  body.asked .modes { margin-top: 16px; }
+  body.guiding #ask-form, body.guiding #voice-status, body.guiding .scope-wrap, body.guiding #result { display: none; }
+  .guide-form { max-width: 44rem; margin: 0 auto; }
+  .guide-form h2 { margin: 0 0 20px; font-size: 1.25rem; text-align: center; }
+  .guide-form fieldset { margin: 0 0 20px; padding: 0; border: 0; }
+  .guide-form legend { margin-bottom: 10px; padding: 0; font-weight: 700; }
+  .guide-form legend small, .guide-form .hint { font-size: 0.8125rem; font-weight: 400; color: var(--ink-3); }
+  .guide-form .hint { margin: 10px 0 0; }
+  .guide-form .btn { width: 100%; }
+  .picks { display: flex; flex-wrap: wrap; gap: 8px; }
+  .pick { position: relative; }
+  .pick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .pick span { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); font-size: 0.9375rem; }
+  .pick input:checked + span { border-color: var(--primary); background: var(--primary-wash); color: var(--primary-ink); font-weight: 700; }
+  .pick input:focus-visible + span { outline: 2px solid var(--primary); outline-offset: 2px; }
+  #guide-result { margin-top: 32px; }
+  .guide-head h2 { margin: 0 0 8px; font-size: 1.375rem; }
+  .guide-head p { margin: 0 0 4px; font-size: 0.9375rem; color: var(--ink-2); }
+  .guide-head .btn { margin-top: 12px; }
+  .guide-group h3 { margin: 32px 0 12px; font-size: 1.1875rem; }
+  .gclause { margin: 0 0 12px; padding: 16px 18px; border: 1px solid var(--line-soft); border-radius: 14px; background: var(--bg); break-inside: avoid; }
+  .gclause h5 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 1rem; }
+  .gclause .kind { padding: 1px 10px; border-radius: 999px; background: var(--c); color: #fff; font-size: 0.75rem; font-weight: 700; }
+  .gclause blockquote { margin: 0 0 10px; padding: 10px 14px; border-radius: 10px; background: var(--bg-soft); font-size: 0.9375rem; line-height: 1.7; }
+  .gclause .meta { margin: 0 0 10px; font-size: 0.8125rem; color: var(--ink-3); }
+  .gclause .meta a { color: var(--primary-ink); }
+  .gclause .url, .print-only { display: none; }
+  .guide-stats { margin-top: 32px; padding: 18px; border-radius: 14px; background: var(--bg-soft); }
+  .guide-stats h3 { margin: 0 0 10px; font-size: 1rem; }
+  .guide-stats p { margin: 0; font-size: 0.9375rem; color: var(--ink-2); }
+  .guide-stats li { display: grid; grid-template-columns: 6rem 1fr 3rem; align-items: center; gap: 10px; font-size: 0.9375rem; }
+  .guide-stats ul { margin: 0; padding: 0; list-style: none; }
+  .guide-stats .bar { height: 10px; border-radius: 999px; background: var(--c); }
+  .follow-ups { margin: 16px 0 0; }
+  .follow-ups h3 { margin: 0 0 4px; font-size: 1.1875rem; }
+  .follow-ups p { margin: 0 0 8px; font-size: 0.8125rem; color: var(--ink-3); }
+  .follow-ups .btn { display: flex; width: 100%; justify-content: flex-start; min-height: 44px; margin-bottom: 6px; padding: 8px 16px; white-space: normal; text-align: left; font-weight: 500; }
+  @media print {
+    :root, [data-theme="dark"] { --ink: #000; --ink-2: #222; --ink-3: #444; --bg: #fff; --bg-soft: #f2f2f2; --line: #999; --line-soft: #bbb; --primary-ink: #000; }
+    body { background: #fff; font-size: 11pt; }
+    body.guiding .topbar, body.guiding .hero, body.guiding .modes, body.guiding #guide-form, body.guiding .no-print, body.guiding footer .api { display: none; }
+    body.guiding #guide-result { margin-top: 0; }
+    .gclause .url { display: block; font-size: 8pt; }
+    .print-only { display: inline; }
+  }
 </style>
 </head>
 <body>
@@ -632,6 +676,29 @@
 <main class="wrap">
   <section class="hero" aria-labelledby="page-title">
     <h1 id="page-title" class="lockup"><span class="mark big" aria-hidden="true"><i style="--c:var(--ord-주차장)"></i><i style="--c:var(--ord-동물보호)"></i><i style="--c:var(--ord-자전거)"></i><i style="--c:var(--ord-도시공원)"></i><i style="--c:var(--ord-청년)"></i><i style="--c:var(--ord-금연)"></i></span><span class="sr-only">SolarLex 서울 조례 도우미</span></h1>
+  </section>
+
+  <nav class="modes" aria-label="화면 선택">
+    <button type="button" id="mode-ask" aria-pressed="true">질문하기</button>
+    <button type="button" id="mode-guide" aria-pressed="false">나에게 맞는 조례</button>
+  </nav>
+
+  <section id="guide-view" aria-labelledby="guide-title" hidden>
+    <form id="guide-form" class="guide-form" novalidate>
+      <h2 id="guide-title">내 상황을 고르면 관련 조항을 모아 드려요</h2>
+      <fieldset>
+        <legend>나이대 <small>선택하지 않아도 됩니다</small></legend>
+        <div class="picks" id="guide-ages"></div>
+        <p class="hint">나이대와 조례별 횟수만 저장하고 질문 내용은 저장하지 않아요.</p>
+      </fieldset>
+      <fieldset>
+        <legend>내 상황 <small>여러 개 고를 수 있어요</small></legend>
+        <div class="picks" id="guide-targets"></div>
+      </fieldset>
+      <p id="guide-notice" class="hint" role="status"></p>
+      <button class="btn btn-primary" type="submit">조항 모아 보기</button>
+    </form>
+    <div id="guide-result"></div>
   </section>
 
   <form id="ask-form" class="ask" novalidate>
@@ -663,8 +730,7 @@
 
 <footer>
   <div class="wrap">
-    <p>서울특별시 조례 6종만 다룹니다. 자치구 조례와 국가 법령은 포함하지 않아요.</p>
-    <p>AI가 조례를 요약한 참고 정보이며 법적 효력이 없습니다. 정확한 적용 여부는 조례 원문과 그 조례의 담당 부서에서 확인하세요. 어디에 물어야 할지 모르겠으면 120 다산콜(국번 없이 120)에서 안내받을 수 있어요.</p>
+    <p>서울특별시 조례 6종을 AI가 요약한 참고 정보이며 법적 효력이 없습니다. 정확한 적용 여부는 조례 원문과 담당 부서에서 확인하세요.</p>
     <p class="api">Upstage Solar, 법제처 국가법령정보 OPEN API</p>
   </div>
 </footer>
@@ -682,7 +748,6 @@ const ICON = {
   ext: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>',
   info: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>',
   alert: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0zM12 9v4M12 17h.01"/></svg>',
-  shield: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>',
   wifiOff: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 2l20 20M8.5 16.5a5 5 0 0 1 7 0M5 13a10 10 0 0 1 5.2-2.8M19 13a10 10 0 0 0-2-1.6M2 8.8a15 15 0 0 1 4.2-2.6M22 8.8A15 15 0 0 0 10.7 5M12 20h.01"/></svg>',
 };
 
@@ -858,9 +923,13 @@ function renderAnswer(question, data) {
   const departments = [...new Map(evidence.filter((ev) => ev.department).map((ev) => [ev.department, ev])).values()];
   if (departments.length) {
     const contacts = departments.map((ev) => `서울시 ${esc(ev.department)} <a href="tel:${esc(ev.phone)}">${esc(ev.phone)}</a>`).join(" · ");
-    head.append(el("p", { class: "contact" }, `<span>이 조례의 담당 부서: ${contacts}</span><small>법제처 국가법령정보에 등록된 조례 담당 부서예요. 실제 사업이나 시설을 운영하는 기관은 다를 수 있어요. 어디에 물어야 할지 모르겠으면 120 다산콜(국번 없이 120)에서 안내받을 수 있어요.</small>`));
+    head.append(el("p", { class: "contact" }, `<span>이 조례의 담당 부서: ${contacts}</span>`));
   }
-  head.append(el("p", { class: "trust" }, `${ICON.shield}<span>조항 번호, 원문 링크, 시행일은 AI가 쓰지 않고 검색된 조례 원문에서 그대로 가져옵니다.</span>`));
+  if (data.follow_ups && data.follow_ups.length) {
+    const more = el("div", { class: "follow-ups" }, `<p>이어서 물어볼 만한 질문</p>`);
+    data.follow_ups.forEach((q) => { const b = el("button", { type: "button", class: "btn btn-quiet" }, esc(q)); b.onclick = () => ask(q); more.append(b); });
+    head.append(more);
+  }
   frag.push(head);
 
   // 답변 아래 탭: 종류별로 한 가지씩만 보여 줍니다
@@ -1387,8 +1456,7 @@ function renderState(question, kind, savedAt) {
     // 근거가 없을 때는 연관 조례 지도를 그리지 않습니다. 검색에만 걸린 조례를 보여 주면 관련 규정이 있다고 오해하기 쉽습니다.
     box.innerHTML = `<h2>${ICON.info}확인 불가</h2>
       <p>서울시 조례 6종에서 이 질문에 답할 근거를 찾지 못했어요. 관련 규정이 없다는 뜻은 아니에요.</p>
-      <p>자치구 조례나 국가 법령, 별도 사업 안내에 내용이 있을 수 있어요. 어디에 물어야 할지 모르겠으면 120 다산콜(국번 없이 120)에서 담당 기관을 안내받을 수 있어요.</p>
-      <p class="about">SolarLex는 서울시 조례 6종 원문에서 근거 조항을 찾아 답해요. 근거가 없을 때는 지어내지 않고 이렇게 확인 불가로 알려 드려요.</p>`;
+      <p>어디에 물어야 할지 모르겠으면 120 다산콜(국번 없이 120)에서 담당 기관을 안내받을 수 있어요.</p>`;
     const next = el("div", { class: "next-questions" }, `<p>이런 질문에는 답할 수 있어요.</p>`);
     EXAMPLES.slice(0, 3).forEach((q) => { const b = el("button", { type: "button", class: "btn btn-quiet" }, esc(q)); b.onclick = () => ask(q); next.append(b); });
     box.append(next);
@@ -1566,9 +1634,16 @@ function showAddress(question) {
   if (location.search !== (question ? next : "")) history.pushState({}, "", next);
 }
 
+function setMode(guiding) {
+  document.body.classList.toggle("guiding", guiding);
+  guideView.hidden = !guiding;
+  $("#mode-ask").setAttribute("aria-pressed", String(!guiding));
+  $("#mode-guide").setAttribute("aria-pressed", String(guiding));
+}
+
 function goHome(keepQuestion = "") {
   controller?.abort(); controller = null; clearInterval(tick); stopSpeech();
-  setBusy(false);
+  setBusy(false); setMode(false);
   current = null; result.replaceChildren(); input.value = keepQuestion; markChips(null);
   live.textContent = ""; if (!recording) voiceStatus(null);
   document.body.classList.remove("asked"); fitInput();
@@ -1579,6 +1654,7 @@ async function ask(question, spoken = false) {
   const mine = new AbortController();
   controller?.abort(); clearInterval(tick); stopSpeech();
   controller = mine;
+  setMode(false);
   document.body.classList.add("asked");
   input.value = question; markChips(question); fitInput();
   setBusy(true);
@@ -1587,7 +1663,7 @@ async function ask(question, spoken = false) {
   result.scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth", block: "start" });
   try {
     const res = await fetch("/demo/ask", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question }), signal: mine.signal });
+      body: JSON.stringify(ageBand ? { question, age_band: ageBand } : { question }), signal: mine.signal });
     if (!res.ok) throw new Error(String(res.status));
     const data = await res.json();
     if (controller !== mine) return;
@@ -1610,6 +1686,102 @@ async function ask(question, spoken = false) {
   }
 }
 
+
+const guideView = $("#guide-view"), guideForm = $("#guide-form"), guideResult = $("#guide-result"), guideNotice = $("#guide-notice");
+const GUIDE_ADDRESS = "?guide", RELATION_TITLE = { BENEFITS: "받을 수 있는 것", OBLIGES: "지켜야 할 것" };
+let ageBand = "", guideChoices = null;
+const guideInAddress = () => location.search === GUIDE_ADDRESS;
+
+const pick = (type, name, value, label, checked = false) =>
+  `<label class="pick"><input type="${type}" name="${name}" value="${esc(value)}"${checked ? " checked" : ""}><span>${label}</span></label>`;
+
+async function openGuide() {
+  goHome(); setMode(true);
+  if (guideChoices) return;
+  guideNotice.textContent = "고를 수 있는 상황을 불러오는 중이에요.";
+  const res = await fetch("/demo/guide");
+  if (!res.ok) { guideNotice.textContent = "상황 목록을 불러오지 못했어요. 잠시 뒤 다시 열어 주세요."; return; }
+  guideChoices = await res.json();
+  $("#guide-ages").innerHTML = pick("radio", "age", "", "선택 안 함", true) + guideChoices.age_bands.map((band) => pick("radio", "age", band, esc(band))).join("");
+  $("#guide-targets").innerHTML = guideChoices.targets.map((t) => pick("checkbox", "target", t.name, esc(t.name))).join("");
+  guideNotice.textContent = "";
+}
+
+function guideClause(clause, several) {
+  const card = el("article", { class: "gclause" });
+  card.innerHTML = `<h5><span class="kind" style="--c:${ordColor(clause.law)}">${esc(clause.kind)}</span>${esc(ordShort(clause.law))} ${esc(clause.article)} (${esc(clause.title)})</h5>
+    ${several ? `<p class="meta">해당 상황: ${esc(clause.targets.join(", "))}</p>` : ""}
+    <blockquote>${esc(clause.detail)}</blockquote>
+    <p class="meta">시행일 ${esc(dateKo(clause.effective_date))} · <a href="${esc(clause.source_url)}" target="_blank" rel="noopener">조례 원문</a><span class="print-only"> · 담당 부서 서울시 ${esc(clause.department)} ${esc(clause.phone)}</span><span class="url">${esc(clause.source_url)}</span></p>`;
+  const more = el("button", { type: "button", class: "btn btn-quiet no-print" }, "이 조항 자세히 묻기");
+  more.onclick = () => ask(clause.question);
+  card.append(more);
+  return card;
+}
+
+async function recommendFor(chosen, box) {
+  const res = await fetch("/demo/guide/questions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targets: chosen }) });
+  if (!box.isConnected) return;
+  const note = box.querySelector("p");
+  if (!res.ok) { note.textContent = "추천 질문을 불러오지 못했어요. 아래 조항의 '자세히 묻기'로 물어볼 수 있어요."; return; }
+  const { questions } = await res.json();
+  if (!box.isConnected) return;
+  note.remove();
+  questions.forEach((q) => { const b = el("button", { type: "button", class: "btn btn-quiet" }, esc(q)); b.onclick = () => ask(q); box.append(b); });
+}
+
+async function guideStats() {
+  const res = await fetch(`/demo/stats?age_band=${encodeURIComponent(ageBand)}`);
+  const box = el("section", { class: "guide-stats no-print" }, `<h3>${esc(ageBand)} 질문의 답에 쓰인 조례</h3>`);
+  if (!res.ok) { box.append(el("p", {}, "통계를 불러오지 못했어요.")); return box; }
+  const stats = await res.json();
+  if (!stats.by_ordinance.length) {
+    box.append(el("p", {}, `${esc(ageBand)} 이용자의 답변이 아직 ${stats.total}건이라 통계를 보여 드리지 않아요. ${stats.minimum}건부터 조례별 횟수를 보여 드려요.`));
+    return box;
+  }
+  const most = stats.by_ordinance[0].answers;
+  const list = el("ul");
+  stats.by_ordinance.forEach((row) => list.append(el("li", {},
+    `<span>${esc(ordShort(row.law))}</span><span class="bar" style="--c:${ordColor(row.law)};width:${Math.round(row.answers / most * 100)}%"></span><span>${row.answers}건</span>`)));
+  box.append(list, el("p", {}, `이 화면에서 ${esc(ageBand)}로 고르고 물은 질문 ${stats.total}건의 답에 인용된 조례를 센 값이에요.`));
+  return box;
+}
+
+guideForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const chosen = [...guideForm.querySelectorAll('input[name="target"]:checked')].map((box) => box.value);
+  ageBand = guideForm.querySelector('input[name="age"]:checked')?.value || "";
+  if (!chosen.length) { guideNotice.textContent = "상황을 하나 이상 골라 주세요."; return; }
+  guideNotice.textContent = "";
+  const res = await fetch("/demo/guide", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targets: chosen }) });
+  if (!res.ok) { guideNotice.textContent = "조항을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요."; return; }
+  const { clauses } = await res.json();
+  const today = new Date();
+  const head = el("header", { class: "guide-head" }, `<h2>나에게 관련 있을 수 있는 서울시 조례</h2>
+    <p>고른 조건: ${esc([ageBand, ...chosen].filter(Boolean).join(", "))} · 조항 ${clauses.length}개 · 만든 날 ${today.getFullYear()}. ${today.getMonth() + 1}. ${today.getDate()}.</p>
+    <p>관련 있을 수 있는 조항을 모은 참고 자료예요. 적용 여부는 원문과 담당 부서에서 확인하세요.</p>`);
+  const print = el("button", { type: "button", class: "btn btn-quiet no-print" }, "인쇄 / PDF로 저장");
+  print.onclick = () => window.print();
+  head.append(print);
+  const sections = [];
+  const recommended = el("section", { class: "follow-ups no-print", "aria-live": "polite" }, `<h3>추천 질문</h3><p>고른 상황 조합에 맞춰 Solar가 아래 조항에서 질문을 고르는 중이에요.</p>`);
+  sections.push(recommended);
+  Object.entries(RELATION_TITLE).forEach(([relation, title]) => {
+    const matching = clauses.filter((clause) => clause.relation === relation);
+    if (!matching.length) return;
+    const section = el("section", { class: "guide-group" }, `<h3>${title} ${matching.length}개</h3>`);
+    section.append(...matching.map((clause) => guideClause(clause, chosen.length > 1)));
+    sections.push(section);
+  });
+  guideResult.replaceChildren(head, ...sections);
+  recommendFor(chosen, recommended);
+  if (ageBand) guideResult.append(await guideStats());
+  scrollTo(head, "start");
+});
+
+$("#mode-ask").addEventListener("click", () => { showAddress(""); goHome(); });
+$("#mode-guide").addEventListener("click", () => { if (!guideInAddress()) history.pushState({}, "", GUIDE_ADDRESS); openGuide(); });
+
 document.querySelectorAll("[data-ord]").forEach((n) => { n.outerHTML = ordIcon(n.dataset.ord, n.className.replace("oi", "").trim()); });
 form.addEventListener("submit", (e) => { e.preventDefault(); if (controller) return; const q = input.value.trim(); ask(q || EXAMPLES[exIdx]); });
 input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); } });
@@ -1618,11 +1790,11 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && current 
 NARROW.addEventListener("change", () => { if (!current || !current.mapDrawn) return; if ($("#panel-map") && !$("#panel-map").hidden) drawMap(); else current.mapDrawn = false; });
 $("#home-link").addEventListener("click", (e) => { e.preventDefault(); showAddress(""); goHome(); });
 const askedInAddress = () => new URLSearchParams(location.search).get("q");
-window.addEventListener("popstate", () => { const q = askedInAddress(); if (q) ask(q); else goHome(); });
+window.addEventListener("popstate", () => { const q = askedInAddress(); if (q) ask(q); else if (guideInAddress()) openGuide(); else goHome(); });
 // ---- 질문칸 안내 문구: 예시 질문을 타자 치듯 하나씩 보여 줍니다 ----
 const EXAMPLES = ["저 27살인데 서울시 청년 정책 대상에 들어가나요?", "첫 차로 경차를 샀는데 서울 공영주차장에서 할인되나요?", "서울시 청년 월세 지원금은 한 달에 얼마인가요?", "따릉이 1시간 이용요금이 얼마예요?", "서울 금연구역에서 담배 피우다 걸리면 과태료가 얼마예요?", "자취방에서 유기견을 입양하면 동물등록 수수료를 내야 하나요?"];
 let exIdx = 0;
-if (askedInAddress()) ask(askedInAddress());
+if (askedInAddress()) ask(askedInAddress()); else if (guideInAddress()) openGuide();
 (function typeExamples() {
   const PRE = "예) ", TYPE = 70, ERASE = 28, HOLD = 2400, GAP = 450;
   const set = (t) => input.setAttribute("placeholder", t);

@@ -7,6 +7,10 @@
   POST /ask       대회 채점용. 필드 4개(answer, citation, source_url, effective_date)만 돌려줍니다.
   POST /demo/ask  시연 화면용. 위 4개에 인용 조항 원문(evidence)과 연관 조례 지식그래프(graph)를 더합니다.
                   DEMO_OFFLINE=1이면 미리 저장한 응답(web/demo_cache.json)을 돌려줍니다(offline 표시).
+  GET  /demo/guide  시연 화면용. 맞춤 안내에서 고를 수 있는 대상(지식그래프의 대상자)과 나이대 목록.
+  POST /demo/guide  시연 화면용. 고른 대상에게 해당하는 조항(받을 수 있는 것·지켜야 할 것)을 지식그래프에서 모아 줍니다.
+  POST /demo/guide/questions  시연 화면용. 고른 상황 조합에 맞춰 Solar가 해당 조항에서 추천 질문을 뽑습니다.
+  GET  /demo/stats  시연 화면용. 나이대별로 답에 쓰인 조례 횟수. 답이 일정 수 쌓이기 전에는 합계만 줍니다.
   POST /demo/stt  시연 화면용. 녹음한 음성(본문 그대로)을 글로 바꿉니다. OPENAI_API_KEY가 없으면 503.
   POST /demo/tts  시연 화면용. 답 문장을 음성(mp3)으로 바꿉니다. OPENAI_API_KEY가 없으면 503.
   GET  /          시민용 시연 화면(web/index.html)
@@ -25,6 +29,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 import config
+import guide
 import kb
 import rag
 import voice
@@ -59,7 +64,8 @@ def demo_page():
 @app.post("/demo/ask")
 async def demo_ask(request: Request):
     try:
-        question = extract_question(await request.json())
+        body = await request.json()
+        question = extract_question(body)
         if not question.strip():
             return {**rag.UNKNOWN, "evidence": [], "graph": None}
         if config.DEMO_OFFLINE:   # 네트워크 없는 시연: 저장한 질문만 답하고, 나머지는 확인 불가로 속이지 않고 missing으로 알립니다
@@ -76,7 +82,32 @@ async def demo_ask(request: Request):
     except Exception as e:  # noqa: BLE001
         log.warning("graph failed: %r", e)
         graph = None
-    return {**result, "evidence": evidence, "graph": graph}
+    guide.record_answer(body.get("age_band") if isinstance(body, dict) else None, result["citation"])
+    return {**result, "evidence": evidence, "graph": graph, "follow_ups": guide.follow_ups(result["citation"], question)}
+
+
+@app.get("/demo/guide")
+def demo_guide_choices():
+    return {"targets": guide.targets(), "age_bands": guide.AGE_BANDS}
+
+
+@app.post("/demo/guide")
+async def demo_guide(request: Request):
+    body = await request.json()
+    names = body.get("targets") if isinstance(body, dict) else None
+    return {"clauses": guide.clauses_for(names if isinstance(names, list) else [])}
+
+
+@app.post("/demo/guide/questions")
+async def demo_guide_questions(request: Request):
+    body = await request.json()
+    names = body.get("targets") if isinstance(body, dict) else None
+    return {"questions": await asyncio.to_thread(guide.recommended_questions, names if isinstance(names, list) else [])}
+
+
+@app.get("/demo/stats")
+def demo_stats(age_band: str = ""):
+    return guide.answers_by_ordinance(age_band)
 
 
 VOICE_OFF = JSONResponse({"error": "voice_off"}, status_code=503)
