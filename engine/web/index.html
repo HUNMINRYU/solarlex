@@ -6,6 +6,16 @@
 <title>SolarLex</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20x%3D%226%22%20y%3D%2212%22%20width%3D%226%22%20height%3D%2240%22%20rx%3D%223%22%20fill%3D%22%233d5bd9%22/%3E%3Crect%20x%3D%2215%22%20y%3D%2212%22%20width%3D%226%22%20height%3D%2240%22%20rx%3D%223%22%20fill%3D%22%23b5651d%22/%3E%3Crect%20x%3D%2224%22%20y%3D%2212%22%20width%3D%226%22%20height%3D%2240%22%20rx%3D%223%22%20fill%3D%22%232f8a4f%22/%3E%3Crect%20x%3D%2233%22%20y%3D%2212%22%20width%3D%226%22%20height%3D%2240%22%20rx%3D%223%22%20fill%3D%22%230f7f8a%22/%3E%3Crect%20x%3D%2242%22%20y%3D%2212%22%20width%3D%226%22%20height%3D%2240%22%20rx%3D%223%22%20fill%3D%22%237a4fd1%22/%3E%3Crect%20x%3D%2251%22%20y%3D%2212%22%20width%3D%226%22%20height%3D%2240%22%20rx%3D%223%22%20fill%3D%22%23c0394b%22/%3E%3C/svg%3E">
 <meta name="description" content="서울특별시 조례 6종 원문에서 근거 조항을 찾아 답합니다.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SolarLex">
+<meta property="og:title" content="SolarLex · 서울 조례, 평소 말로 물어보세요">
+<meta property="og:description" content="서울특별시 조례 6종 원문에서 근거 조항을 찾아 답하고, OX 퀴즈로도 풀어 볼 수 있어요.">
+<meta property="og:url" content="https://solarlex.amooai.com/">
+<meta property="og:image" content="https://solarlex.amooai.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="SolarLex. 서울 조례, 평소 말로 물어보세요. 주차장, 동물보호, 자전거, 도시공원, 청년, 금연 조례.">
+<meta name="twitter:card" content="summary_large_image">
 <!-- 공공서비스용 서체 Pretendard GOV(KRDS 표준, OFL). 공식 동적 서브셋을 서버가 직접 내보내 외부 CDN 없이도 같은 화면입니다. -->
 <script>try { if (localStorage.getItem("solarlex-theme") === "dark") document.documentElement.dataset.theme = "dark"; } catch (e) {}</script>
 <link rel="stylesheet" href="/fonts/pretendard-gov-dynamic-subset.css">
@@ -1791,6 +1801,7 @@ const RECOMMEND_AFTER_MS = 700, DONUT_LENGTH = 100, DONUT_GAP = 1.2;
 const GUIDE_ADDRESS = "?guide", RELATION_TITLE = { BENEFITS: "받을 수 있는 것", OBLIGES: "지켜야 할 것" };
 let guideChoices = null, guideTurn = 0, recommendTimer = null;
 const guideInAddress = () => location.search === GUIDE_ADDRESS;
+const QUIZ_ADDRESS = "?quiz", quizInAddress = () => location.search === QUIZ_ADDRESS;
 
 const pick = (type, name, value, label, checked = false) =>
   `<label class="pick"><input type="${type}" name="${name}" value="${esc(value)}"${checked ? " checked" : ""}><span>${label}</span></label>`;
@@ -2031,6 +2042,9 @@ async function quizResult() {
   const file = new File([await quizCard(right)], "solarlex-quiz.png", { type: "image/png" }), address = URL.createObjectURL(file);
   box.querySelector(".quiz-score + p").after(el("img", { class: "quiz-card", src: address, alt: `서울시 조례 퀴즈 결과: ${items.length}문항 중 ${right}문항 정답` }));
   actions.append(el("a", { class: "btn btn-quiet", href: address, download: file.name }, "이미지 저장"));
+  const link = el("button", { type: "button", class: "btn btn-quiet" }, "퀴즈 링크 복사");
+  link.onclick = async () => { await navigator.clipboard.writeText(location.origin + location.pathname + QUIZ_ADDRESS); link.textContent = "링크를 복사했어요"; };
+  actions.append(link);
   if (navigator.canShare?.({ files: [file] })) {
     const share = el("button", { type: "button", class: "btn btn-primary" }, "이미지로 공유");
     share.onclick = () => navigator.share({ files: [file] }).catch((e) => { if (e.name !== "AbortError") throw e; });
@@ -2041,6 +2055,7 @@ async function quizResult() {
 $("#quiz-open").addEventListener("click", () => { quizBox.showModal(); startQuiz(); });
 $("#quiz-close").addEventListener("click", () => quizBox.close());
 quizBox.addEventListener("click", (e) => { if (e.target === quizBox) quizBox.close(); });
+if (quizInAddress()) { history.replaceState({}, "", location.pathname); quizBox.showModal(); startQuiz(); }
 
 const themeBtn = $("#theme-toggle");
 const applyTheme = (dark) => {

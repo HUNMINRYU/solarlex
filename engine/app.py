@@ -89,6 +89,11 @@ def demo_page():
     return FileResponse(config.ROOT / "web" / "index.html")
 
 
+@app.get("/og.png")
+def share_card():
+    return FileResponse(config.ROOT / "web" / "og.png")
+
+
 @app.post("/demo/ask")
 async def demo_ask(request: Request):
     try:
