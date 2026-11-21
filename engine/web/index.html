@@ -548,6 +548,41 @@
   [data-theme="dark"] .badge { color: #0f1216; }
   [data-theme="dark"] .q-bubble { background: var(--primary); }
   @media (max-width: 47.99rem) { .theme-toggle { width: 32px; height: 32px; } }
+  /* ---- 5차: 결과 화면도 첫 화면과 같은 가운데 축 ---- */
+  body.asked .ask, body.asked .scope-wrap { width: 100%; max-width: 44rem; margin-inline: auto; }
+  .scope-wrap { justify-content: center; }
+  #result:not(:empty) { max-width: 60rem; margin-inline: auto; margin-top: 40px; }
+  #result .bot-card, #result .bot-col > .state { max-width: none; }
+  #result .sources, #result .extras ul, #result .related { max-width: none; }
+  footer .wrap { text-align: center; }
+  @media (max-width: 47.99rem) {
+    .scope-wrap { text-align: center; }
+    .scope-label { text-align: center; }
+    .scope { justify-content: center; }
+    #result:not(:empty) { margin-top: 24px; }
+  }
+  /* ---- 6차: 질문 말풍선 빼기(화면 읽기 프로그램용으로만 남김), 답변 글씨 균형 ---- */
+  .q-echo { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0; }
+  .conclusion { font-size: 1.75rem; line-height: 1.4; letter-spacing: -0.02em; }
+  .conclusion.long { font-size: 1.375rem; line-height: 1.5; }
+  .detail { margin-top: 14px; font-size: 1.0625rem; line-height: 1.8; color: var(--ink-2); }
+  .answer-head .detail, .answer-head .refs, .answer-head .trust { max-width: none; }
+  .refs { margin-top: 18px; }
+  .ref { min-height: 32px; font-size: 0.875rem; font-weight: 600; }
+  .ref .n { width: 22px; height: 22px; font-size: 0.75rem; }
+  .trust { margin-top: 16px; }
+  .state h2, .state-unknown h2 { font-size: 1.375rem; }
+  .state p { font-size: 1rem; line-height: 1.75; }
+  @media (max-width: 47.99rem) {
+    .conclusion { font-size: 1.375rem; }
+    .conclusion.long { font-size: 1.1875rem; }
+    .detail { font-size: 1rem; }
+    .state h2, .state-unknown h2 { font-size: 1.1875rem; }
+  }
+  /* ---- 7차: 탭 목록과 탭 설명 가운데 ---- */
+  #result .tablist { display: flex; width: fit-content; max-width: 100%; margin-inline: auto; }
+  #result .panel-note, #result .tab-panel .kg .sub { max-width: none; text-align: center; }
+  @media (max-width: 47.99rem) { #result .tablist { width: 100%; } }
 </style>
 </head>
 <body>
