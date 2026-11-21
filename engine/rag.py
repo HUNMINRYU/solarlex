@@ -742,6 +742,13 @@ def _original_texts():
     return _cache["originals"]
 
 
+def _departments():
+    if "departments" not in _cache:
+        laws = json.loads((config.DATA / "ordinances.json").read_text(encoding="utf-8"))
+        _cache["departments"] = {law["name"]: {"department": law["department"], "phone": law["phone"]} for law in laws}
+    return _cache["departments"]
+
+
 def answer(question):
     return answer_with_evidence(question)[0]
 
@@ -931,7 +938,8 @@ def _answer_once(question):
     originals = _original_texts()
     evidence = list({h["label"]: {"label": h["label"], "text": originals.get(h["label"], h["text"]),
                                    "source_url": h["source_url"],
-                                   "effective_date": h["effective_date"]} for h in used}.values())
+                                   "effective_date": h["effective_date"],
+                                   **_departments()[h["law"]]} for h in used}.values())
     text = name_evidence(out["answer"], hits)
     if config.USE_PLAIN:
         text = plain_text(text)

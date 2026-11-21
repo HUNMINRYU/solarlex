@@ -73,6 +73,8 @@ def parse_xml(xml_bytes, name, mst):
         "mst": mst,
         "effective_date": f"{eff[:4]}-{eff[4:6]}-{eff[6:]}",
         "source_url": PAGE_URL.format(mst=mst),
+        "department": (info.findtext("담당부서명") or "").strip(),
+        "phone": (info.findtext("전화번호") or "").strip(),
         "articles": [],
         "annexes": [],
     }

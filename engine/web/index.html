@@ -106,6 +106,9 @@
   @media (max-width: 47.99rem) { .voice-btn { min-height: 48px; } }
   .listen { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 16px 0 0; font-size: 0.8125rem; color: var(--ink-3); }
   .listen[hidden] { display: none; }
+  .contact { display: flex; flex-direction: column; gap: 2px; margin: 16px 0 0; font-size: 0.9375rem; color: var(--ink-2); }
+  .contact a { color: var(--primary-ink); font-weight: 600; text-decoration: none; white-space: nowrap; }
+  .contact small { font-size: 0.8125rem; color: var(--ink-3); }
   .next-questions { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 20px; }
   .next-questions p { margin: 0; font-weight: 600; }
   .next-questions .btn-quiet { margin-top: 0; height: auto; min-height: 40px; padding: 8px 16px; text-align: left; white-space: normal; }
@@ -661,7 +664,7 @@
 <footer>
   <div class="wrap">
     <p>서울특별시 조례 6종만 다룹니다. 자치구 조례와 국가 법령은 포함하지 않아요.</p>
-    <p>AI가 조례를 요약한 참고 정보이며 법적 효력이 없습니다. 정확한 적용 여부는 조례 원문과 담당 부서(120 다산콜재단)에서 확인하세요.</p>
+    <p>AI가 조례를 요약한 참고 정보이며 법적 효력이 없습니다. 정확한 적용 여부는 조례 원문과 그 조례의 담당 부서에서 확인하세요. 어디에 물어야 할지 모르겠으면 120 다산콜(국번 없이 120)에서 안내받을 수 있어요.</p>
     <p class="api">Upstage Solar, 법제처 국가법령정보 OPEN API</p>
   </div>
 </footer>
@@ -852,6 +855,11 @@ function renderAnswer(question, data) {
   });
   head.append(refs);
   head.append(listenRow(data.answer));
+  const departments = [...new Map(evidence.filter((ev) => ev.department).map((ev) => [ev.department, ev])).values()];
+  if (departments.length) {
+    const contacts = departments.map((ev) => `서울시 ${esc(ev.department)} <a href="tel:${esc(ev.phone)}">${esc(ev.phone)}</a>`).join(" · ");
+    head.append(el("p", { class: "contact" }, `<span>이 조례의 담당 부서: ${contacts}</span><small>법제처 국가법령정보에 등록된 조례 담당 부서예요. 실제 사업이나 시설을 운영하는 기관은 다를 수 있어요. 어디에 물어야 할지 모르겠으면 120 다산콜(국번 없이 120)에서 안내받을 수 있어요.</small>`));
+  }
   head.append(el("p", { class: "trust" }, `${ICON.shield}<span>조항 번호, 원문 링크, 시행일은 AI가 쓰지 않고 검색된 조례 원문에서 그대로 가져옵니다.</span>`));
   frag.push(head);
 
@@ -1379,7 +1387,7 @@ function renderState(question, kind, savedAt) {
     // 근거가 없을 때는 연관 조례 지도를 그리지 않습니다. 검색에만 걸린 조례를 보여 주면 관련 규정이 있다고 오해하기 쉽습니다.
     box.innerHTML = `<h2>${ICON.info}확인 불가</h2>
       <p>서울시 조례 6종에서 이 질문에 답할 근거를 찾지 못했어요. 관련 규정이 없다는 뜻은 아니에요.</p>
-      <p>자치구 조례나 국가 법령에 관한 내용이라면 120 다산콜재단에 문의해 주세요.</p>
+      <p>자치구 조례나 국가 법령, 별도 사업 안내에 내용이 있을 수 있어요. 어디에 물어야 할지 모르겠으면 120 다산콜(국번 없이 120)에서 담당 기관을 안내받을 수 있어요.</p>
       <p class="about">SolarLex는 서울시 조례 6종 원문에서 근거 조항을 찾아 답해요. 근거가 없을 때는 지어내지 않고 이렇게 확인 불가로 알려 드려요.</p>`;
     const next = el("div", { class: "next-questions" }, `<p>이런 질문에는 답할 수 있어요.</p>`);
     EXAMPLES.slice(0, 3).forEach((q) => { const b = el("button", { type: "button", class: "btn btn-quiet" }, esc(q)); b.onclick = () => ask(q); next.append(b); });
