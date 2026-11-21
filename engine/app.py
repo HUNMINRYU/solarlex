@@ -21,9 +21,11 @@
 그래서 어떤 경우에도 정해진 JSON을 돌려주도록 감쌌습니다.
 """
 import asyncio
+import collections
 import functools
 import json
 import logging
+import time
 
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -41,6 +43,27 @@ app = FastAPI(title="서울시 조례 Q&A")
 app.mount("/fonts", StaticFiles(directory=config.ROOT / "web" / "fonts"), name="fonts")
 log = logging.getLogger("uvicorn.error")
 MAX_PDF_REQUEST_BYTES = 300_000
+COSTLY_PATHS = {"/demo/ask", "/demo/guide/questions", "/demo/answer.pdf", "/demo/stt", "/demo/tts"}
+COSTLY_REQUESTS_PER_WINDOW, WINDOW_SEC, MAX_TRACKED_VISITORS = 20, 60, 10_000
+recent_costly_requests = collections.defaultdict(collections.deque)
+
+
+@app.middleware("http")
+async def limit_costly_demo_requests(request: Request, call_next):
+    """모델을 부르는 시연용 경로는 방문자(IP)마다 1분에 20번까지만 받습니다. 채점용 /ask는 제한하지 않습니다."""
+    if request.url.path in COSTLY_PATHS:
+        now = time.monotonic()
+        if len(recent_costly_requests) > MAX_TRACKED_VISITORS:
+            for visitor in [v for v, times in recent_costly_requests.items() if now - times[-1] > WINDOW_SEC]:
+                del recent_costly_requests[visitor]
+        times = recent_costly_requests[request.client.host]
+        while times and now - times[0] > WINDOW_SEC:
+            times.popleft()
+        if len(times) >= COSTLY_REQUESTS_PER_WINDOW:
+            return JSONResponse({"error": "요청이 많습니다. 잠시 뒤 다시 시도해 주세요."}, status_code=429,
+                                headers={"Retry-After": str(WINDOW_SEC)})
+        times.append(now)
+    return await call_next(request)
 
 
 @functools.cache
@@ -115,7 +138,8 @@ async def demo_answer_pdf(request: Request):
     if len(raw) > MAX_PDF_REQUEST_BYTES:
         return JSONResponse({"error": "요청이 너무 큽니다."}, status_code=413)
     body = json.loads(raw)
-    document = await asyncio.to_thread(pdf.answer_pdf, body["question"], body["situations"], body["answer"], body["evidence"])
+    document = await asyncio.to_thread(pdf.answer_pdf, body["question"], body["situations"], body["answer"], body["evidence"],
+                                       body["related"], body["chart"], body["extras"])
     return Response(document, media_type="application/pdf", headers={"Content-Disposition": 'attachment; filename="solarlex-answer.pdf"'})
 
 

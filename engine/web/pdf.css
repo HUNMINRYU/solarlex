@@ -37,3 +37,11 @@ h2 { margin: 9mm 0 3mm; font-size: 11pt; font-weight: 900; }
 .source .meta { font-size: 8.5pt; color: #6d7882; white-space: nowrap; }
 .clause { margin: 2mm 0 0; padding: 4mm 5mm; border-left: 0.9mm solid var(--c); border-radius: 0 3mm 3mm 0; background: #f4f5f6; font-size: 9pt; line-height: 1.7; white-space: pre-wrap; }
 .link { margin-top: 1.2mm; font-size: 7.5pt; color: #6d7882; }
+.note { margin: -1.5mm 0 3mm; font-size: 8.5pt; color: #6d7882; }
+h3.law { display: inline-block; margin: 4mm 0 0; padding: 0.6mm 3.5mm; border-radius: 4mm; background: var(--c); color: #fff; font-size: 9pt; font-weight: 700; }
+.why { margin-top: 1.2mm; font-size: 8.5pt; color: #464c53; }
+.keep { break-inside: avoid; }
+.map { display: block; width: 100%; margin-top: 2mm; padding: 3mm; border: 0.3mm solid #e6e8ea; border-radius: 4mm; break-inside: avoid; }
+.extras { margin: 0; padding: 0; list-style: none; }
+.extras li { display: flex; gap: 3mm; padding: 2.2mm 0; border-bottom: 0.3mm solid #e6e8ea; font-size: 9.5pt; break-inside: avoid; }
+.extras .kind { flex: none; align-self: flex-start; padding: 0.4mm 2.5mm; border-radius: 4mm; background: #f4f5f6; color: #464c53; font-size: 8pt; font-weight: 700; white-space: nowrap; }

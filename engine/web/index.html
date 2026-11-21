@@ -670,7 +670,9 @@
   .stat-legend .n { color: var(--ink-3); font-variant-numeric: tabular-nums; }
   .stat-legend .pct { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
   .stat-note { margin: 12px 0 0; font-size: 0.8125rem; color: var(--ink-3); }
-  .answer-tools { margin: 16px 0 0; }
+  .answer-tools { display: flex; justify-content: flex-end; margin: 16px 0 0; }
+  .btn-save { min-height: 44px; padding: 0 20px; font-size: 0.9375rem; }
+  .btn-save:disabled { cursor: progress; }
   .follow-ups { margin: 16px 0 0; }
   .follow-ups h3 { margin: 0 0 4px; font-size: 1.1875rem; }
   .follow-ups p { margin: 0 0 8px; font-size: 0.8125rem; color: var(--ink-3); }
@@ -916,14 +918,14 @@ function showLoading(question) {
 const offlineNote = (savedAt) => el("p", { class: "offline" },
   `${ICON.wifiOff}<span>네트워크 없이 미리 저장해 둔 실제 답변을 보여 드려요.${savedAt ? ` 저장 시각 ${esc(savedAt)}` : ""}</span>`);
 
-const PDF_LABEL = "이 답변 PDF로 저장";
+const PDF_LABEL = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>PDF로 받기`;
 const PDF_LINK_LIFE_MS = 60000;
 async function savePdf(button, content) {
   button.disabled = true; button.textContent = "PDF 만드는 중…";
   const res = await fetch("/demo/answer.pdf", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(content) });
   button.disabled = false;
   if (!res.ok) { button.textContent = "PDF를 만들지 못했어요. 다시 누르기"; return; }
-  button.textContent = PDF_LABEL;
+  button.innerHTML = PDF_LABEL;
   const link = el("a", { href: URL.createObjectURL(await res.blob()), download: "SolarLex-답변.pdf" });
   link.click();
   setTimeout(() => URL.revokeObjectURL(link.href), PDF_LINK_LIFE_MS);
@@ -951,11 +953,6 @@ function renderAnswer(question, data, situations) {
   });
   head.append(refs);
   head.append(listenRow(data.answer));
-  const save = el("button", { type: "button", class: "btn btn-quiet" }, PDF_LABEL);
-  save.onclick = () => savePdf(save, { question, situations, answer: data.answer, evidence });
-  const tools = el("p", { class: "answer-tools" });
-  tools.append(save);
-  head.append(tools);
   const departments = [...new Map(evidence.filter((ev) => ev.department).map((ev) => [ev.department, ev])).values()];
   if (departments.length) {
     const contacts = departments.map((ev) => `서울시 ${esc(ev.department)} <a href="tel:${esc(ev.phone)}">${esc(ev.phone)}</a>`).join(" · ");
@@ -966,6 +963,18 @@ function renderAnswer(question, data, situations) {
     data.follow_ups.forEach((q) => { const b = el("button", { type: "button", class: "btn btn-quiet" }, esc(q)); b.onclick = () => ask(q, false, situations); more.append(b); });
     head.append(more);
   }
+  const save = el("button", { type: "button", class: "btn btn-primary btn-save" }, PDF_LABEL);
+  save.onclick = () => savePdf(save, { question, situations, answer: data.answer, evidence,
+    related: related.map((r) => ({ law: r.law, label: r.label, title: r.title || "", reasons: r.reasons || [], text: r.text || "", source_url: r.source_url || "" })),
+    chart: model && { cited: model.cited.map((c) => ({ id: c.id, law: c.law, title: c.title || "" })),
+      hubs: model.hubs.map((h) => ({ id: h.id, kind: HUB[h.role], label: h.role === "topic" ? `#${h.name}` : h.name, thin: h.role === "topic" })),
+      groups: model.groups.map((g) => ({ law: g.law, items: g.items.map((n) => ({ id: n.id, title: n.title || "" })) })),
+      links: model.links.map((l) => ({ art: l.art, hub: l.hub })), direct: model.direct.map((d) => ({ cited: d.cited, rel: d.rel })) },
+    extras: model ? model.extras.map((x) => ({ kind: x.label || "연결", reason: x.reason || "",
+      name: x.node.kind === "article" || x.node.kind === "annex" ? `${shortArticle(x.node.id, x.node.law)} ${x.node.title || ""}` : x.node.name })) : [] });
+  const tools = el("p", { class: "answer-tools" });
+  tools.append(save);
+  head.append(tools);
   frag.push(head);
 
   // 답변 아래 탭: 종류별로 한 가지씩만 보여 줍니다
@@ -1502,6 +1511,9 @@ function renderState(question, kind, savedAt) {
     box.innerHTML = `<h2>${ICON.info}저장해 둔 질문만 답할 수 있어요</h2>
       <p>지금은 네트워크 없이 미리 저장한 답변으로 시연하고 있어요. 질문칸을 비운 채 질문하기를 누르면 질문칸에 보이는 예시 질문으로 물어볼 수 있어요.</p>`;
     live.textContent = "오프라인 시연 모드입니다. 저장해 둔 질문만 답할 수 있습니다.";
+  } else if (kind === "limited") {
+    box.innerHTML = `<h2>${ICON.info}잠시 뒤 다시 물어봐 주세요</h2><p>짧은 시간에 질문이 많이 들어와 잠깐 쉬고 있어요. 1분쯤 뒤에 다시 질문해 주세요.</p>`;
+    live.textContent = "요청이 많아 잠시 뒤 다시 질문해 주세요.";
   } else {
     box.innerHTML = `<h2>${ICON.alert}답변을 불러오지 못했어요</h2><p>서버와 연결하는 중에 문제가 생겼어요. 잠시 뒤 다시 시도해 주세요.</p>`;
     const retry = el("button", { type: "button", class: "btn btn-quiet" }, "다시 시도");
@@ -1700,6 +1712,7 @@ async function ask(question, spoken = false, situations = []) {
   try {
     const res = await fetch("/demo/ask", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question, situations }), signal: mine.signal });
+    if (res.status === 429) { if (controller === mine) renderState(question, "limited"); return; }
     if (!res.ok) throw new Error(String(res.status));
     const data = await res.json();
     if (controller !== mine) return;
