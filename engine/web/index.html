@@ -574,6 +574,7 @@
   .quiz-source p { margin: 8px 0 0; padding: 12px; max-height: 12rem; overflow: auto; border-radius: 10px; background: var(--bg-soft); color: var(--ink-2); white-space: pre-wrap; }
   .quiz-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 18px; }
   .quiz-actions .btn { min-height: 44px; }
+  .quiz-actions .btn[hidden] { display: none; }
   .quiz-score { margin: 0; font-size: 1.5rem; font-weight: 800; }
   .quiz-score + p { margin: 4px 0 16px; color: var(--ink-2); }
   .quiz-card { display: block; width: min(100%, 16rem); margin: 0 auto 16px; border: 1px solid var(--line-soft); border-radius: 14px; }
@@ -1957,17 +1958,14 @@ function quizItem() {
   const at = quiz.picks.length, item = quiz.items[at], last = at === quiz.items.length - 1;
   const form = el("form", { novalidate: "" }, `<p class="quiz-step"><span>${at + 1} / ${quiz.items.length}</span><span class="law"><span class="dot" style="--c:${ordColor(item.law)}"></span>${esc(ordShort(item.law))}</span></p>
     <p class="quiz-q" id="quiz-q">${esc(item.question)}</p>
-    <p class="quiz-ask">맞으면 O, 틀리면 X를 골라 주세요.</p>
+    <p class="quiz-ask">맞으면 O, 틀리면 X를 누르면 바로 채점해요.</p>
     <fieldset class="quiz-choices" aria-labelledby="quiz-q">${item.choices.map((choice, i) => `<label><input type="radio" name="pick" value="${i}" class="sr-only"><span class="ox">${esc(choice)}</span><span class="mark"></span></label>`).join("")}</fieldset>
     <div class="quiz-after" role="status"></div>
-    <div class="quiz-actions"><button type="submit" class="btn btn-primary" disabled>정답 확인</button></div>`);
-  const submit = form.querySelector("[type=submit]");
-  form.addEventListener("change", () => { submit.disabled = false; });
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    if (form.dataset.checked) { quiz.picks.length < quiz.items.length ? quizItem() : quizResult(); return; }
+    <div class="quiz-actions"><button type="submit" class="btn btn-primary" hidden>${last ? "결과 보기" : "다음 문제"}</button></div>`);
+  const next = form.querySelector("[type=submit]");
+  form.addEventListener("submit", (e) => { e.preventDefault(); quiz.picks.length < quiz.items.length ? quizItem() : quizResult(); });
+  form.addEventListener("change", () => {
     const pick = Number(new FormData(form).get("pick")), correct = pick === item.answer;
-    form.dataset.checked = "1";
     quiz.picks.push(pick);
     form.querySelectorAll("label").forEach((label, i) => {
       label.querySelector("input").disabled = true;
@@ -1979,9 +1977,9 @@ function quizItem() {
       <details class="quiz-source"><summary>근거 원문 · ${esc(shortArticle(item.label, item.law))}</summary><p>${esc(item.text)}</p></details>`;
     const more = el("button", { type: "button", class: "btn btn-quiet" }, "이 내용 자세히 묻기");
     more.onclick = () => { quizBox.close(); ask(item.ask); };
-    form.querySelector(".quiz-actions").prepend(more);
-    submit.textContent = last ? "결과 보기" : "다음 문제";
-    submit.focus();
+    next.before(more);
+    next.hidden = false;
+    next.focus();
   });
   quizBody.replaceChildren(form);
 }
