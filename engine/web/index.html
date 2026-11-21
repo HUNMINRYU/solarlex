@@ -110,6 +110,7 @@
   .next-questions p { margin: 0; font-weight: 600; }
   .next-questions .btn-quiet { margin-top: 0; height: auto; min-height: 40px; padding: 8px 16px; text-align: left; white-space: normal; }
   .loading > .btn-quiet { margin-top: 16px; }
+  #result .scan { max-width: none; }
   .ask textarea[readonly] { color: var(--ink-2); }
   body.asked .ask { grid-template-areas: "label label" "input btn" "scope scope"; border-width: 2px; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(37, 110, 244, .12); padding: 20px 24px; }
   body.asked .ask textarea { font-size: 1.375rem; font-weight: 500; }
@@ -1394,7 +1395,31 @@ function markChips(question) {
 // ---- 음성: 말로 묻기(녹음 → /demo/stt → 받아쓴 문장으로 바로 질문)와 답 듣기(/demo/tts). 서버에 음성 키가 없으면 버튼을 숨깁니다 ----
 const mic = $("#mic"), micLabel = $("#mic-label"), voiceBox = $("#voice-status");
 const RECORD_MS = 60000, MAX_EXTENSIONS = 10, WARN_LEFT_MS = 30000, QUIET_AFTER_SPEECH_MS = 1600, SPEECH_LEVEL = 0.04;
-let voiceOn = false, recording = null, speaking = null;
+let voiceOn = false, recording = null, speakingButton = null;
+// 답을 읽는 재생기는 하나만 둡니다. 아이폰은 누른 순간에 재생을 시작한 재생기만 나중에 소리를 낼 수 있어, 마이크를 누를 때 무음으로 미리 엽니다.
+const player = new Audio(), SILENCE = "data:audio/wav;base64,UklGRrQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YZABAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA", READ_LABEL = "답변 읽어주기";
+function unlockPlayer() { player.src = SILENCE; player.play().catch(() => {}); }
+function stopSpeech() {
+  player.pause();
+  if (speakingButton) speakingButton.textContent = READ_LABEL;
+  speakingButton = null;
+}
+player.addEventListener("ended", stopSpeech);
+async function readAloud(text, button) {
+  stopSpeech();
+  if (button) { button.disabled = true; button.textContent = "준비 중…"; }
+  try {
+    const res = await fetch("/demo/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: text.slice(0, 1000) }) });
+    if (!res.ok) throw new Error(String(res.status));
+    player.src = URL.createObjectURL(await res.blob());
+    await player.play();
+    speakingButton = button || null;
+    if (button) button.textContent = "멈추기";
+  } catch (e) {
+    if (button) button.textContent = READ_LABEL;
+    live.textContent = "음성으로 읽어 드리지 못했어요. 답변 읽어주기를 눌러 주세요.";
+  } finally { if (button) button.disabled = false; }
+}
 fetch("/health").then((r) => r.json()).then((h) => {
   voiceOn = Boolean(h.voice);
   mic.hidden = !(voiceOn && navigator.mediaDevices && window.MediaRecorder);
@@ -1424,7 +1449,7 @@ async function startRecording() {
   audioContext.createMediaStreamSource(stream).connect(analyser);
   const wave = new Uint8Array(analyser.fftSize);
   const state = recording = { recorder, cancelled: false, heard: false, quietSince: null, deadline: Date.now() + RECORD_MS, extensions: 0, warned: false };
-  const LISTENING = "듣고 있어요. 말씀이 끝나면 바로 질문할게요.";
+  const LISTENING = "듣고 있어요. 말씀이 끝나면 바로 질문하고 답을 읽어 드릴게요.";
 
   const meter = el("span", { class: "meter", "aria-hidden": "true" }, "<i></i><i></i><i></i><i></i><i></i>");
   const left = el("span", { class: "left", "aria-hidden": "true" });
@@ -1434,7 +1459,7 @@ async function startRecording() {
   extend.onclick = () => {
     state.deadline += RECORD_MS; state.extensions += 1; state.warned = false;
     extend.hidden = state.extensions >= MAX_EXTENSIONS;
-    voiceBox.querySelector(".msg").textContent = "1분 더 들을게요. 말씀이 끝나면 바로 질문할게요.";
+    voiceBox.querySelector(".msg").textContent = "1분 더 들을게요. 말씀이 끝나면 바로 질문하고 답을 읽어 드릴게요.";
   };
   mic.setAttribute("aria-pressed", "true"); micLabel.textContent = "말 끝내기";
   voiceStatus("recording", LISTENING, [meter, left, extend, cancel,
@@ -1479,7 +1504,7 @@ async function startRecording() {
       const { text } = await res.json();
       if (!text) return voiceStatus("error", "말씀하신 내용을 알아듣지 못했어요. 다시 눌러 말씀하시거나 글로 입력해 주세요.");
       voiceStatus(null);
-      ask(text);
+      ask(text, true);
     } catch (e) {
       voiceStatus("error", "글로 바꾸지 못했어요. 잠시 뒤 다시 시도하거나 글로 입력해 주세요.");
     } finally { mic.disabled = Boolean(controller); }
@@ -1489,26 +1514,15 @@ async function startRecording() {
 }
 mic.addEventListener("click", () => {
   if (recording) return recording.recorder.stop();
+  stopSpeech(); unlockPlayer();
   startRecording().catch(() => { recording = null; micIdle(); voiceStatus("error", "마이크를 쓸 수 없어요. 주소창의 마이크 권한을 허용하거나 글로 입력해 주세요."); });
 });
 
 function listenRow(answer) {
   const row = el("p", { class: "listen" });
   row.hidden = !voiceOn;
-  const b = el("button", { type: "button", class: "btn btn-quiet" }, "답변 읽어주기");
-  b.onclick = async () => {
-    if (speaking) { speaking.pause(); speaking = null; b.textContent = "답변 읽어주기"; return; }
-    b.disabled = true; b.textContent = "준비 중…";
-    try {
-      const res = await fetch("/demo/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: answer.slice(0, 1000) }) });
-      if (!res.ok) throw new Error(String(res.status));
-      speaking = new Audio(URL.createObjectURL(await res.blob()));
-      speaking.onended = () => { speaking = null; b.textContent = "답변 읽어주기"; };
-      await speaking.play();
-      b.textContent = "멈추기";
-    } catch (e) { speaking = null; b.textContent = "답변 읽어주기"; live.textContent = "음성으로 읽어 드리지 못했어요."; }
-    finally { b.disabled = false; }
-  };
+  const b = el("button", { type: "button", class: "btn btn-quiet" }, READ_LABEL);
+  b.onclick = () => (speakingButton === b ? stopSpeech() : readAloud(answer, b));
   row.append(b, el("span", {}, "AI가 생성한 음성으로 읽어 드려요."));
   return row;
 }
@@ -1525,7 +1539,7 @@ function showAddress(question) {
 }
 
 function goHome(keepQuestion = "") {
-  controller?.abort(); controller = null; clearInterval(tick);
+  controller?.abort(); controller = null; clearInterval(tick); stopSpeech();
   setBusy(false);
   current = null; result.replaceChildren(); input.value = keepQuestion; markChips(null);
   live.textContent = ""; if (!recording) voiceStatus(null);
@@ -1533,9 +1547,10 @@ function goHome(keepQuestion = "") {
   window.scrollTo({ top: 0 }); input.focus();
 }
 
-async function ask(question) {
+// spoken: 말로 물은 질문이면 답도 음성으로 바로 읽습니다.
+async function ask(question, spoken = false) {
   const mine = new AbortController();
-  controller?.abort(); clearInterval(tick);
+  controller?.abort(); clearInterval(tick); stopSpeech();
   controller = mine;
   document.body.classList.add("asked");
   input.value = question; markChips(question);
@@ -1550,8 +1565,13 @@ async function ask(question) {
     const data = await res.json();
     if (controller !== mine) return;
     if (data.missing) renderState(question, "offline");
-    else if (!data.citation || data.citation.length === 0) renderState(question, "unknown", data.offline && data.saved_at);
-    else renderAnswer(question, data);
+    else if (!data.citation || data.citation.length === 0) {
+      renderState(question, "unknown", data.offline && data.saved_at);
+      if (spoken) readAloud("확인 불가입니다. 서울시 조례 6종에서 이 질문에 답할 근거를 찾지 못했어요.", null);
+    } else {
+      renderAnswer(question, data);
+      if (spoken) readAloud(data.answer, result.querySelector(".listen button"));
+    }
   } catch (e) {
     if (controller !== mine) return;
     renderState(question, "error");
