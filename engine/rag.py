@@ -839,6 +839,11 @@ def _cited_clauses(out, hits):
     return [h for h in cited if not h.get("ref") and not DISTRICT.search(h["label"])], refs
 
 
+def _own_annexes(cited, hits):
+    named = {f"{h['law']} 별표 {n}".strip() for h in cited for n in ANNEX_REF.findall(h["text"].split("\n", 1)[-1])}
+    return [h["label"] for h in hits if not h.get("ref") and h["label"] in named]
+
+
 def _same_law_search(term, laws, seen):
     return [h for h in complete_articles(retrieve(term, top_k=6))
             if h["label"] not in seen and not h.get("ref") and h["law"] in laws and not DISTRICT.search(h["label"])]
@@ -906,6 +911,12 @@ def _answer_once(question):
         hits = hits + reference_hits(question)
 
     out = _classified(question, hits)
+    if out["kind"] in GUIDE_KINDS:
+        annexes = _own_annexes(_cited_clauses(out, hits)[0], hits)
+        if annexes:
+            out = _classified(question, hits, f"인용한 조항이 가리키는 {', '.join(annexes)}가 근거에 있다. 조례 자신의 별표에 적힌 값은 조례가 정한 것이다. "
+                                            "질문이 묻는 값이 그 별표에 있으면 kind를 answer로 하고 그 값을 답하라. "
+                                            "실제 값을 그 범위 안에서 규칙으로 정한다면 그렇게 덧붙인다. 그 별표에 없으면 처음 답 그대로 하라.")
     if config.USE_ANNEX_NUMCHECK and out["kind"] == "answer":
         gaps = annex_number_gaps(out["claims"], hits)
         if gaps:
