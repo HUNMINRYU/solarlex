@@ -1539,6 +1539,15 @@ function listenRow(answer) {
   return row;
 }
 
+const INPUT_MAX_HEIGHT = 200;
+function fitInput() {
+  input.style.height = "auto";
+  input.style.height = `${Math.min(input.scrollHeight, INPUT_MAX_HEIGHT)}px`;
+  input.style.overflowY = input.scrollHeight > INPUT_MAX_HEIGHT ? "auto" : "hidden";
+}
+input.addEventListener("input", fitInput);
+window.addEventListener("resize", fitInput);
+
 function setBusy(busy) {
   input.readOnly = busy; mic.disabled = busy;
   submit.disabled = busy; submit.textContent = busy ? "찾는 중…" : "질문하기";
@@ -1554,7 +1563,7 @@ function goHome(keepQuestion = "") {
   setBusy(false);
   current = null; result.replaceChildren(); input.value = keepQuestion; markChips(null);
   live.textContent = ""; if (!recording) voiceStatus(null);
-  document.body.classList.remove("asked");
+  document.body.classList.remove("asked"); fitInput();
   window.scrollTo({ top: 0 }); input.focus();
 }
 
@@ -1563,7 +1572,7 @@ async function ask(question, spoken = false) {
   controller?.abort(); clearInterval(tick); stopSpeech();
   controller = mine;
   document.body.classList.add("asked");
-  input.value = question; markChips(question);
+  input.value = question; markChips(question); fitInput();
   setBusy(true);
   showAddress(question);
   showLoading(question);
