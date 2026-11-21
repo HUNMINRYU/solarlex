@@ -110,7 +110,6 @@
   .next-questions p { margin: 0; font-weight: 600; }
   .next-questions .btn-quiet { margin-top: 0; height: auto; min-height: 40px; padding: 8px 16px; text-align: left; white-space: normal; }
   .loading > .btn-quiet { margin-top: 16px; }
-  #result .scan { max-width: none; }
   .ask textarea[readonly] { color: var(--ink-2); }
   body.asked .ask { grid-template-areas: "label label" "input btn" "scope scope"; border-width: 2px; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(37, 110, 244, .12); padding: 20px 24px; }
   body.asked .ask textarea { font-size: 1.375rem; font-weight: 500; }
@@ -603,6 +602,20 @@
   #result .tablist { display: flex; width: fit-content; max-width: 100%; margin-inline: auto; }
   #result .panel-note, #result .tab-panel .kg .sub { max-width: none; text-align: center; }
   @media (max-width: 47.99rem) { #result .tablist { width: 100%; } }
+  #result .scan { max-width: none; }
+  .state .next-questions .btn-quiet { margin-top: 0; }
+  [data-theme="dark"] .voice-btn, [data-theme="dark"] .btn-quiet { border-color: #687789; }
+  [data-theme="dark"] .loading.bot-card { border: 1px solid #485463; }
+  [data-theme="dark"] .btn-primary { background: #1f5fd6; }
+  [data-theme="dark"] .btn-primary:hover { background: #1a52ba; }
+  @media (max-width: 47.99rem) {
+    .ask .voice-btn, .ask .btn-primary { min-height: 48px; }
+    .refs .ref { min-height: 44px; }
+  }
+  @media (max-width: 30rem) {
+    .loading .status { gap: 8px; font-size: 1.0625rem; }
+    .loading .status small { font-size: 0.875rem; }
+  }
 </style>
 </head>
 <body>
@@ -1392,7 +1405,6 @@ function markChips(question) {
   document.querySelectorAll(".chip").forEach((b) => b.setAttribute("aria-current", String(b.dataset.q === question)));
 }
 
-// ---- 음성: 말로 묻기(녹음 → /demo/stt → 받아쓴 문장으로 바로 질문)와 답 듣기(/demo/tts). 서버에 음성 키가 없으면 버튼을 숨깁니다 ----
 const mic = $("#mic"), micLabel = $("#mic-label"), voiceBox = $("#voice-status");
 const RECORD_MS = 60000, MAX_EXTENSIONS = 10, WARN_LEFT_MS = 30000, QUIET_AFTER_SPEECH_MS = 1600, SPEECH_LEVEL = 0.04;
 let voiceOn = false, recording = null, speakingButton = null;
@@ -1527,7 +1539,6 @@ function listenRow(answer) {
   return row;
 }
 
-// 요청마다 자기 것(mine)을 기억합니다. 홈으로 가거나 새 질문을 보내 주인이 바뀐 요청은 끝나도 화면을 건드리지 않습니다.
 function setBusy(busy) {
   input.readOnly = busy; mic.disabled = busy;
   submit.disabled = busy; submit.textContent = busy ? "찾는 중…" : "질문하기";
@@ -1547,7 +1558,6 @@ function goHome(keepQuestion = "") {
   window.scrollTo({ top: 0 }); input.focus();
 }
 
-// spoken: 말로 물은 질문이면 답도 음성으로 바로 읽습니다.
 async function ask(question, spoken = false) {
   const mine = new AbortController();
   controller?.abort(); clearInterval(tick); stopSpeech();
