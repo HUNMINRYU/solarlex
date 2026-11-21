@@ -142,6 +142,7 @@ cd engine
 | `LAW_OC` | 법제처 OPEN API 인증값 | `test` |
 | `USE_VERIFY` | Solar Decide 근거 검증(`0`이면 끔) | `1` |
 | `USE_PLAIN` | 답 본문 표기 다듬기("100분의 50"→"50%", 호·목 번호 제거). 모델 호출과 인용은 그대로 | `1` |
+| `OPENAI_API_KEY` | (선택) 시연 화면의 말로 묻기·답변 읽어주기에만 씁니다(OpenAI 음성 인식·합성). 없으면 음성 버튼이 숨겨집니다. 채점용 `/ask`의 검색·답변·검증은 Upstage 모델만 씁니다 | 없음 |
 | `ABSTAIN_RETRY` | 검색은 됐는데 답 단계에서 `확인 불가`로 포기하면 한 번 다시 답하기 | `1` |
 | `USE_REFERENCE` | 상위법·시행령·시행규칙 참고 조각을 답변 근거에 '참고'로 붙이기(인용에는 넣지 않음) | `1` |
 | `REFERENCE_K` | 붙이는 참고 조각 수 | `3` |
@@ -192,7 +193,8 @@ cd engine
 
 | Path | 역할 |
 |---|---|
-| `engine/app.py` | `POST /ask`(채점용), `POST /demo/ask`·`GET /`(시연용), `GET /health`. 어떤 입력·오류에도 대회 JSON |
+| `engine/app.py` | `POST /ask`(채점용), `POST /demo/ask`·`GET /`(시연용), `POST /demo/stt`·`POST /demo/tts`(시연용 음성), `GET /health`. 어떤 입력·오류에도 대회 JSON |
+| `engine/voice.py` | 시연 화면의 음성: 녹음을 글로(`/demo/stt`), 답을 음성으로(`/demo/tts`). `OPENAI_API_KEY`가 있을 때만 켜짐 |
 | `engine/rag.py` | 검색 → 답변 → 위임·준용 안내 → 확인 불가 규칙 → 인용 바로잡기 → 검증 → 대회 JSON |
 | `engine/upstage.py` | Upstage API 호출(Chat, Embedding, Document Parse, Decide), 동시 호출 제한과 재시도 |
 | `engine/config.py` | 모든 설정과 실험 스위치 |
