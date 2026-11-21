@@ -3,11 +3,12 @@ import json
 import sqlite3
 
 import config
+import kb
 
 TARGET_PREFIX = "대상:"
 RELATIONS = ("BENEFITS", "OBLIGES")
 USAGE_DB = config.DATA / "usage.db"
-AGE_BANDS = ("10대", "20대", "30대", "40대 이상")
+USAGE_EXAMPLE = config.DATA / "usage_example.json"
 MIN_ANSWERS_FOR_STATS = 20
 MAX_FOLLOW_UPS = 3
 MAX_RECOMMENDED = 6
@@ -24,6 +25,19 @@ def _ordinances():
 
 
 @functools.cache
+def _reviewed_units():
+    laws = json.loads((config.DATA / "ordinances.json").read_text(encoding="utf-8"))
+    position = {(f"{law['name']} {a['article']}", unit[:kb.UNIT_WIDTH]): (i, lead, unit)
+                for law in laws for a in law["articles"] for i, (lead, unit) in enumerate(kb._clause_units(a["text"]))}
+    kept = {}
+    for r in json.loads(kb.TARGET_REVIEW.read_text(encoding="utf-8")):
+        if r["keep"]:
+            kept.setdefault((r["article"], r["group"], kb.EFFECTS[r["effect"]]), set()).add(position[(r["article"], r["unit"])])
+    return {key: list(dict.fromkeys(line for _, lead, unit in sorted(units) for line in (lead, unit) if line))
+            for key, units in kept.items()}
+
+
+@functools.cache
 def _clauses_by_target():
     graph = sqlite3.connect(config.DATA / "solarlex.db")
     rows = graph.execute(
@@ -32,10 +46,10 @@ def _clauses_by_target():
     graph.close()
     clauses = {}
     for target, relation, article, law, title, note in rows:
-        kind, _, detail = note.partition(": ")
+        kind = note.partition(": ")[0]
         name = target.removeprefix(TARGET_PREFIX)
         clauses.setdefault(name, []).append({
-            "relation": relation, "kind": kind, "detail": detail, "law": law,
+            "relation": relation, "kind": kind, "details": _reviewed_units()[(article, name, relation)], "law": law,
             "article": article.removeprefix(law).strip(), "title": title,
             "question": f"{article}({title})에서 {name}에게 해당하는 내용을 알려 주세요.", **_ordinances()[law]})
     return clauses
@@ -71,32 +85,33 @@ def follow_ups(citation, asked):
 
 def _usage():
     usage = sqlite3.connect(USAGE_DB, timeout=5)
-    usage.execute("CREATE TABLE IF NOT EXISTS answers (age_band TEXT, law TEXT, answers INTEGER, PRIMARY KEY (age_band, law))")
+    usage.execute("CREATE TABLE IF NOT EXISTS situation_answers (situation TEXT, law TEXT, answers INTEGER, PRIMARY KEY (situation, law))")
     return usage
 
 
-def record_answer(age_band, citation):
-    if age_band not in AGE_BANDS:
-        return
+def record_answer(situations, citation):
+    known = _clauses_by_target()
     laws = {law for label in citation for law in _ordinances() if label.startswith(law)}
     with _usage() as usage:
-        usage.executemany("INSERT INTO answers VALUES (?, ?, 1) ON CONFLICT (age_band, law) DO UPDATE SET answers = answers + 1",
-                          [(age_band, law) for law in laws])
+        usage.executemany("INSERT INTO situation_answers VALUES (?, ?, 1) ON CONFLICT (situation, law) DO UPDATE SET answers = answers + 1",
+                          [(situation, law) for situation in set(situations) if situation in known for law in laws])
 
 
-def answers_by_ordinance(age_band):
+def answers_by_ordinance(situation):
     with _usage() as usage:
-        rows = usage.execute("SELECT law, answers FROM answers WHERE age_band = ? ORDER BY answers DESC", (age_band,)).fetchall()
+        rows = usage.execute("SELECT law, answers FROM situation_answers WHERE situation = ? ORDER BY answers DESC", (situation,)).fetchall()
     total = sum(answers for _, answers in rows)
-    enough = total >= MIN_ANSWERS_FOR_STATS
-    return {"age_band": age_band, "total": total, "minimum": MIN_ANSWERS_FOR_STATS,
-            "by_ordinance": [{"law": law, "answers": answers} for law, answers in rows] if enough else []}
+    example = total < MIN_ANSWERS_FOR_STATS
+    if example:
+        rows = sorted(json.loads(USAGE_EXAMPLE.read_text(encoding="utf-8")).get(situation, {}).items(), key=lambda row: -row[1])
+    return {"situation": situation, "total": total, "minimum": MIN_ANSWERS_FOR_STATS, "example": example,
+            "by_ordinance": [{"law": law, "answers": answers} for law, answers in rows]}
 
 
 @functools.cache
 def _recommended(names):
     import upstage
-    listed = "\n".join(f"- [{', '.join(c['targets'])}] ({c['kind']}) {c['law']} {c['article']} {c['title']}: {c['detail']}"
+    listed = "\n".join(f"- [{', '.join(c['targets'])}] ({c['kind']}) {c['law']} {c['article']} {c['title']}: {' / '.join(c['details'])}"
                        for c in clauses_for(names))
     raw = upstage.chat([
         {"role": "system", "content": (

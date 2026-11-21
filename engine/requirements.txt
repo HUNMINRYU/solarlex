@@ -4,3 +4,4 @@ numpy==2.5.5
 fastapi==0.163.1
 uvicorn==0.54.0
 python-dotenv==1.2.4
+weasyprint==68.1

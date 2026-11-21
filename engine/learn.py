@@ -28,16 +28,14 @@ QUESTION_FILE = config.DATA / "learned_questions.json"
 PER_LABEL = 3
 
 SYSTEM = (
-    "너는 서울시 조례 상담 데이터를 만드는 사람이다. 조항마다, 그 조항이 정답 근거가 되는 시민 질문을 3개 만든다.\n"
+    "너는 서울시 조례 상담 데이터를 만드는 사람이다. 주어진 조항이 정답 근거가 되는 시민 질문을 3개 만든다.\n"
     "- 조문 용어를 그대로 베끼지 말고 시민이 일상에서 쓰는 말로 쓴다(예: '영유아를 동반한' → '아기 데리고').\n"
     "- 세 질문은 서로 다른 상황·대상·말투로 쓴다. 하나는 짧게, 하나는 자기 상황을 설명하며 묻는다.\n"
     "- 조항에 없는 내용을 묻지 않는다. 결과는 JSON으로 낸다.")
 
 SCHEMA = {"type": "json_schema", "json_schema": {"name": "learned_questions", "strict": True, "schema": {
-    "type": "object", "required": ["items"], "additionalProperties": False,
-    "properties": {"items": {"type": "array", "items": {
-        "type": "object", "required": ["no", "questions"], "additionalProperties": False,
-        "properties": {"no": {"type": "integer"}, "questions": {"type": "array", "items": {"type": "string"}}}}}}}}}
+    "type": "object", "required": ["questions"], "additionalProperties": False,
+    "properties": {"questions": {"type": "array", "items": {"type": "string"}}}}}}
 
 
 def clauses():
@@ -49,20 +47,18 @@ def clauses():
     return out
 
 
-def generate(items, batch=8):
+def _questions(item):
     import upstage
-    learned = {}
-    for s in range(0, len(items), batch):
-        part = items[s:s + batch]
-        listing = "\n\n".join(f"[{n}] {label}\n{text.strip()[:900]}" for n, (label, text) in enumerate(part, 1))
-        raw = upstage.chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": listing}],
-                           response_format=SCHEMA, temperature=0.3)
-        for item in json.loads(raw)["items"]:
-            if 1 <= item["no"] <= len(part):
-                qs = [q.strip() for q in item["questions"] if q.strip()][:PER_LABEL]
-                learned[part[item["no"] - 1][0]] = qs
-        print(f"예상 질문 {min(s + batch, len(items))}/{len(items)}")
-    return learned
+    label, text = item
+    raw = upstage.chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": f"{label}\n{text.strip()[:900]}"}],
+                       response_format=SCHEMA, temperature=0.3)
+    return [q.strip() for q in json.loads(raw)["questions"] if q.strip()][:PER_LABEL]
+
+
+def generate(items):
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(6) as pool:
+        return {label: questions for (label, _), questions in zip(items, pool.map(_questions, items))}
 
 
 def build():

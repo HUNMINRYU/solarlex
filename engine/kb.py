@@ -70,6 +70,9 @@ TARGET_PATTERNS = {
 }
 # 동물보호 조례 안에서는 '소유자'·'입양하려는 시민'이 곧 반려동물 소유자입니다.
 SCOPED_PATTERNS = {("반려동물 소유자", "동물보호"): r"반려동물|반려견|맹견|등록대상동물|소유자|입양하고자|입양하려는"}
+# 「국가유공자 등 예우 및 지원에 관한 법률 시행령」 제86조제1항 각 호의 사람처럼 법 이름으로만 사람을 가리키는 호가 있어, 이 대상은 법 이름 안의 낱말도 봅니다.
+NAMED_BY_LAW = {"국가유공자"}
+UNIT_WIDTH = 160
 TARGETS = list(TARGET_PATTERNS)
 # 효과 단서. 앞에 있는 것이 우선입니다(과태료 > 감면 > 이용 자격 > 지원 > 금지 > 의무). 호(1. 2.)는 소속 항의 머리 문장도 함께 봅니다.
 EFFECT_CUES = [("과태료·제재", r"과태료|벌칙|가산금"), ("감면·할인", r"감면|면제|할인|무료|경감"),
@@ -232,7 +235,7 @@ def _clause_units(text):
     """조문을 항·호 줄로 나눕니다: [(소속 항의 머리 문장 또는 '', 줄)]."""
     lead, out = "", []
     for line in (l.strip() for l in AMEND_NOTE.sub("", text).split("\n") if l.strip()):
-        if re.match(r"^(\d+(의\d+)?|[가-하])\.\s", line):
+        if re.match(r"^(\d+(의\d+)?|[가-하])\.\s*(?!\d)", line):
             out.append((lead, line))
         else:
             lead = line
@@ -253,8 +256,8 @@ def target_candidates(laws):
                     continue
                 for group, pat in TARGET_PATTERNS.items():
                     pat = next((p for (g, law_word), p in SCOPED_PATTERNS.items() if g == group and law_word in law["name"]), pat)
-                    if re.search(pat, body):
-                        out.append({"article": nid, "group": group, "unit": unit[:160], "rule_effect": effect})
+                    if re.search(pat, unit if group in NAMED_BY_LAW else body):
+                        out.append({"article": nid, "group": group, "unit": unit[:UNIT_WIDTH], "rule_effect": effect})
     return out
 
 

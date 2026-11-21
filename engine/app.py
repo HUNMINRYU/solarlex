@@ -7,10 +7,11 @@
   POST /ask       대회 채점용. 필드 4개(answer, citation, source_url, effective_date)만 돌려줍니다.
   POST /demo/ask  시연 화면용. 위 4개에 인용 조항 원문(evidence)과 연관 조례 지식그래프(graph)를 더합니다.
                   DEMO_OFFLINE=1이면 미리 저장한 응답(web/demo_cache.json)을 돌려줍니다(offline 표시).
-  GET  /demo/guide  시연 화면용. 맞춤 안내에서 고를 수 있는 대상(지식그래프의 대상자)과 나이대 목록.
+  GET  /demo/guide  시연 화면용. 맞춤 안내에서 고를 수 있는 상황(지식그래프의 대상자) 목록.
   POST /demo/guide  시연 화면용. 고른 대상에게 해당하는 조항(받을 수 있는 것·지켜야 할 것)을 지식그래프에서 모아 줍니다.
   POST /demo/guide/questions  시연 화면용. 고른 상황 조합에 맞춰 Solar가 해당 조항에서 추천 질문을 뽑습니다.
-  GET  /demo/stats  시연 화면용. 나이대별로 답에 쓰인 조례 횟수. 답이 일정 수 쌓이기 전에는 합계만 줍니다.
+  POST /demo/answer.pdf  시연 화면용. 화면에 나온 질문·답·근거 원문을 서비스와 같은 모양의 PDF로 만들어 줍니다(WeasyPrint).
+  GET  /demo/stats  시연 화면용. 맞춤 안내에서 고른 상황별로, 그 상황에서 물은 질문의 답에 쓰인 조례 횟수. 실제 답이 일정 수 쌓이기 전에는 예시 숫자를 예시라고 표시해 줍니다.
   POST /demo/stt  시연 화면용. 녹음한 음성(본문 그대로)을 글로 바꿉니다. OPENAI_API_KEY가 없으면 503.
   POST /demo/tts  시연 화면용. 답 문장을 음성(mp3)으로 바꿉니다. OPENAI_API_KEY가 없으면 503.
   GET  /          시민용 시연 화면(web/index.html)
@@ -31,6 +32,7 @@ from fastapi.staticfiles import StaticFiles
 import config
 import guide
 import kb
+import pdf
 import rag
 import voice
 
@@ -38,6 +40,7 @@ app = FastAPI(title="서울시 조례 Q&A")
 # 시연 화면 글꼴(Pretendard GOV 공식 동적 서브셋, OFL). CDN 없이도 화면이 같게 보이도록 서버가 직접 내보냅니다.
 app.mount("/fonts", StaticFiles(directory=config.ROOT / "web" / "fonts"), name="fonts")
 log = logging.getLogger("uvicorn.error")
+MAX_PDF_REQUEST_BYTES = 300_000
 
 
 @functools.cache
@@ -82,13 +85,14 @@ async def demo_ask(request: Request):
     except Exception as e:  # noqa: BLE001
         log.warning("graph failed: %r", e)
         graph = None
-    guide.record_answer(body.get("age_band") if isinstance(body, dict) else None, result["citation"])
+    situations = body.get("situations") if isinstance(body, dict) else None
+    guide.record_answer([s for s in situations if isinstance(s, str)] if isinstance(situations, list) else [], result["citation"])
     return {**result, "evidence": evidence, "graph": graph, "follow_ups": guide.follow_ups(result["citation"], question)}
 
 
 @app.get("/demo/guide")
 def demo_guide_choices():
-    return {"targets": guide.targets(), "age_bands": guide.AGE_BANDS}
+    return {"targets": guide.targets()}
 
 
 @app.post("/demo/guide")
@@ -105,9 +109,19 @@ async def demo_guide_questions(request: Request):
     return {"questions": await asyncio.to_thread(guide.recommended_questions, names if isinstance(names, list) else [])}
 
 
+@app.post("/demo/answer.pdf")
+async def demo_answer_pdf(request: Request):
+    raw = await request.body()
+    if len(raw) > MAX_PDF_REQUEST_BYTES:
+        return JSONResponse({"error": "요청이 너무 큽니다."}, status_code=413)
+    body = json.loads(raw)
+    document = await asyncio.to_thread(pdf.answer_pdf, body["question"], body["situations"], body["answer"], body["evidence"])
+    return Response(document, media_type="application/pdf", headers={"Content-Disposition": 'attachment; filename="solarlex-answer.pdf"'})
+
+
 @app.get("/demo/stats")
-def demo_stats(age_band: str = ""):
-    return guide.answers_by_ordinance(age_band)
+def demo_stats(situation: str = ""):
+    return guide.answers_by_ordinance(situation)
 
 
 VOICE_OFF = JSONResponse({"error": "voice_off"}, status_code=503)
