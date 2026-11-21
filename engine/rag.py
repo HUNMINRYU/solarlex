@@ -730,6 +730,25 @@ def reference_only_numbers(answer, question, hits):
     return (_num_tokens(answer) & ref) - own
 
 
+UNCITABLE_MARK = "참고 근거"
+SENTENCE_END = re.compile(r"(?<=\.)\s+")
+
+
+def _ordinance_text():
+    if "ordinance_text" not in _cache:
+        _cache["ordinance_text"] = " ".join(c["text"] for c in _load()[0])
+    return _cache["ordinance_text"]
+
+
+def uncitable_mentions(answer, hits):
+    names = {h["law"] for h in hits if h.get("ref") and h["law"] not in _ordinance_text()}
+    return sorted(n for n in names | {UNCITABLE_MARK} if n in answer)
+
+
+def _without_sentences(answer, words):
+    return " ".join(s for s in SENTENCE_END.split(answer) if not any(w in s for w in words))
+
+
 def reference_hits(question):
     """상위법·시행령·시행규칙 참고 조각(build_index.build_reference). DB가 없는 서버는 빈 목록."""
     if not (kb.ready("reference") or (config.DATA / "chunks_reference.json").exists()):
@@ -926,6 +945,13 @@ def _answer_once(question):
         if leaked:
             out = _classified(question, hits, f"숫자 {', '.join(sorted(leaked))}는 인용할 수 없는 참고 근거에만 있습니다. 답에 쓰지 말라. "
                                             "조례 조항이 그 내용을 규칙·고시 등에 맡겼으면 kind를 delegated로 하라.")
+    if out["kind"] != "none" and uncitable_mentions(out["answer"], hits):
+        out = _classified(question, hits, "답에 인용할 수 없는 참고 근거(상위법·시행령·시행규칙)의 내용이 들어 있다. "
+                                            "조례 근거에 적힌 것만 답하고, 참고 근거의 내용·문서 이름과 '참고 근거'라는 말은 쓰지 말라. "
+                                            "조례 조항이 그 내용을 규칙 등에 맡겼으면 kind를 delegated로 하라.")
+        out["answer"] = _without_sentences(out["answer"], uncitable_mentions(out["answer"], hits))
+        if not out["answer"]:
+            out["kind"] = "none"
     if config.USE_SELF_CHECK and out["kind"] == "answer" and out["claims"]:
         chk = self_check(question, out, hits)
         if config.USE_SELF_RAG and chk["missing"]:
