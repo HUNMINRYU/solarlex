@@ -207,7 +207,7 @@ EXPAND_SCHEMA = {
         "strict": True,
         "schema": {
             "type": "object",
-            "properties": {"queries": {"type": "array", "items": {"type": "string"}}},
+            "properties": {"queries": {"type": "array", "items": {"type": "string"}, "maxItems": 3}},
             "required": ["queries"],
             "additionalProperties": False,
         },
@@ -234,7 +234,7 @@ def expand_queries(question, hits=None):
             "원칙 조항과 함께 예외·감면 중복·제재(과태료)·절차 조항이 필요하면 각각 따로 검색어를 만든다. 결과는 JSON으로 낸다.")},
         {"role": "user", "content": user}],
         response_format=EXPAND_SCHEMA)
-    return [q for q in json.loads(raw)["queries"] if q.strip()][:3]
+    return [q for q in json.loads(raw)["queries"] if q.strip()]
 
 
 PICK_SCHEMA = {"type": "json_schema", "json_schema": {"name": "pick", "strict": True, "schema": {
