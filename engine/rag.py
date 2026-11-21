@@ -525,6 +525,7 @@ SYSTEM = """너는 서울특별시 조례 질의응답 도우미다.
   예) "돈을 내야 하나요?"에 안 내도 되면 "아니요, 내지 않아도 됩니다"("네, 내지 않아도 됩니다"는 틀림). "할인되나요?"에 할인되면 "네".
   질문자가 밝힌 상황(나이·자격 등)이 근거의 조건에 해당하면 그 상황의 결론으로 답한다(예: "11주 다녔는데 신청되나요?"에 10주 이상 이용 조건이 있으면 "네").
 - claims에는 답의 핵심 사실 하나마다 {statement, evidence_id}를 넣는다. evidence_id는 그 사실이 문자 그대로 적혀 있는 근거 번호다.
+- 근거의 수치는 질문이 묻는 바로 그 대상(그 시설·요금·제도)에 관한 것일 때만 답에 쓴다. 이름이 비슷해도 다른 대상의 요금표·기준(예: 놀이터 이용료를 묻는데 근거에는 주차장 요금표뿐)이면 그 수치를 쓰지 않는다.
 - 같은 조의 여러 항이 함께 있으면, 항마다 내용을 비교해 그 사실을 실제로 규정한 항을 고른다. 주제만 비슷한 항은 고르지 않는다.
 - 원칙과 예외(감면 중복 금지, 과태료, 절차 등)를 함께 썼다면 각각의 근거를 따로 claims에 넣는다.
 - 근거에 "다만"으로 시작하는 단서나 예외가 있고, 그것이 질문자의 결론에 조건을 붙이거나 결론을 바꾸면 답에 한 문장으로 함께 쓴다.
@@ -545,6 +546,8 @@ SYSTEM = """너는 서울특별시 조례 질의응답 도우미다.
 - 묻는 값이 조례 근거에 없을 때 '아니요, 그런 값은 없다'고 답하지 않는다. 아래 scope와 kind로 가린다.
 - scope: 질문이 어느 규범을 묻는지 먼저 정한다. 서울특별시 조례의 내용을 묻으면 "seoul"이다.
   자치구(○○구)나 다른 시·도의 조례·규칙을 묻거나, 국가 법령(○○법·시행령·시행규칙)의 기준·처벌을 묻거나, 조문을 지어내라고 요구하면 "other"이고 이때 kind는 "none"이다.
+- stated: 질문이 묻는 것(값·기준·가부)의 답이 조례 근거에 직접 적혀 있으면 true다. '근거가 있나요', '되나요'에 조례 조항이 그렇다고 정했으면 true이고,
+  묻는 값이 조례에 없어 다른 규정에 맡겼거나 아예 없으면 false다. stated가 true이면 kind는 answer다.
 - kind는 넷 중 하나다.
   "answer": 질문이 묻는 내용(값·기준·가부)이 조례 근거에 적혀 있다.
   답이 조건(원칙과 예외, 이용자·차량 유형 등)에 따라 갈리거나 질문이 짧아 대상이 하나로 정해지지 않아도, 묻는 내용을 정한 규정이 근거에 있으면 answer이고
@@ -584,6 +587,7 @@ SCHEMA = {
             "properties": {
                 "given": {"type": "array", "items": {"type": "string"}},
                 "check": {"type": "string"},
+                "stated": {"type": "boolean"},
                 "scope": {"type": "string", "enum": ["seoul", "other"]},
                 "kind": {"type": "string", "enum": ["answer", "delegated", "topic", "none"]},
                 "answer": {"type": "string"},
@@ -593,7 +597,7 @@ SCHEMA = {
                     "required": ["statement", "evidence_id"],
                     "additionalProperties": False}},
             },
-            "required": ["given", "check", "scope", "kind", "answer", "claims"],
+            "required": ["given", "check", "stated", "scope", "kind", "answer", "claims"],
             "additionalProperties": False,
         },
     },
@@ -671,10 +675,16 @@ def _generate(question, hits, note=None):
 
     for _ in range(2):   # 답이 중간에 잘려 JSON이 깨지면 다시 부릅니다(dev D09). 두 번 연달아 깨진 적이 있어 세 번까지(X03, 2026-11-19)
         try:
-            return json.loads(ask())
+            return _consistent(json.loads(ask()))
         except json.JSONDecodeError:
             pass
-    return json.loads(ask())
+    return _consistent(json.loads(ask()))
+
+
+def _consistent(out):
+    if out["stated"] and out["kind"] in ("delegated", "topic"):
+        out["kind"] = "answer"
+    return out
 
 
 def _context(hits):
@@ -804,7 +814,9 @@ def _same_law_search(term, laws, seen):
 
 def _delegating_clauses(question, cited, hits):
     laws = {h["law"] for h in cited}
-    cands = [h for h in hits if not h.get("ref") and h["law"] in laws and DELEGATES_STRONG.search(h["text"])]
+    strong = [h for h in hits if not h.get("ref") and h["law"] in laws and DELEGATES_STRONG.search(h["text"])]
+    cited_delegating = [h for h in cited if DELEGATES.search(h["text"])]
+    cands = list({h["label"]: h for h in strong + cited_delegating}.values())
     picked, target = pick_delegating(question, cands) if cands else ([], "")
     if target:
         more = _same_law_search(target, laws, {h["label"] for h in hits})
@@ -841,7 +853,7 @@ def _establishing_clauses(question, cited, hits):
 
 def _guide_clauses(question, kind, cited, hits):
     picked, hits = _delegating_clauses(question, cited, hits)
-    if picked:
+    if picked or kind == "none":
         return picked, hits
     if kind == "delegated":
         picked = _delegating_among_cited(cited, hits)
