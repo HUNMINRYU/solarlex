@@ -1990,7 +1990,7 @@ async function quizCard(right) {
   const items = quiz.items, size = 1080, canvas = el("canvas", { width: size, height: size }), c = canvas.getContext("2d");
   const style = getComputedStyle(document.documentElement), family = getComputedStyle(document.body).fontFamily;
   const color = (name) => style.getPropertyValue(name).trim();
-  const line = `${dateKo(items[0].effective_date)} 시행 조례 기준 · ${location.host}`;
+  const line = `서울시 조례 6종 · ${location.host}`;
   const words = `SolarLex 서울시 조례 퀴즈 문항 중 정답 ${right} ${items.length} ${line}`;
   await Promise.all([500, 700, 800].map((weight) => document.fonts.load(`${weight} 48px ${family}`, words)));
   c.fillStyle = "#ffffff"; c.fillRect(0, 0, size, size);
