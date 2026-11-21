@@ -653,7 +653,6 @@
   .gclause .meta a { color: var(--primary-ink); }
   .guide-stats { margin-top: 36px; }
   .guide-stats h3 { margin: 0 0 12px; font-size: 1.1875rem; }
-  .guide-stats .example { margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--warn-wash); color: var(--warn-ink); font-size: 0.75rem; font-weight: 700; vertical-align: middle; }
   .stat-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 12px; }
   .stat-card { padding: 18px 20px; border-radius: var(--r-lg); background: var(--card); box-shadow: var(--shadow); }
   .stat-card h4 { margin: 0; font-size: 1rem; }
@@ -1806,11 +1805,10 @@ async function guideStats(chosen) {
   const all = await Promise.all(chosen.map((name) => fetch(`/demo/stats?situation=${encodeURIComponent(name)}`).then((res) => (res.ok ? res.json() : null))));
   const box = el("section", { class: "guide-stats" }, `<h3>이 상황의 사람들은 어느 조례를 많이 물었을까요?</h3>`);
   if (all.includes(null)) { box.append(el("p", {}, "통계를 불러오지 못했어요.")); return box; }
-  const example = all.some((stats) => stats.example);
-  if (example) box.querySelector("h3").insertAdjacentHTML("beforeend", ` <span class="example">예시 데이터</span>`);
   const cards = el("div", { class: "stat-cards" });
   all.forEach((stats) => {
     const total = stats.by_ordinance.reduce((sum, row) => sum + row.answers, 0);
+    if (!total) { cards.append(el("article", { class: "stat-card" }, `<h4>${esc(stats.situation)}</h4><p class="lead">아직 이 상황으로 물은 질문이 없어요. 아래 질문을 눌러 물으면 여기에 쌓여요.</p>`)); return; }
     const rows = stats.by_ordinance.map((row) => ({ ...row, share: Math.round(row.answers / total * 100) }));
     const card = el("article", { class: "stat-card" }, `<h4>${esc(stats.situation)}</h4>
       <p class="lead">${rows.length > 1 ? `<b>${esc(ordShort(rows[0].law))}</b>가 ${rows[0].share}%로 가장 많아요` : `모두 <b>${esc(ordShort(rows[0].law))}</b>에서 답이 나왔어요`}</p>`);
@@ -1822,9 +1820,7 @@ async function guideStats(chosen) {
     cards.append(card);
   });
   box.append(cards);
-  box.append(el("p", { class: "stat-note" }, example
-    ? `화면 구성을 보여 주려고 넣은 예시 숫자예요. 실제 답변이 상황마다 ${all[0].minimum}건 쌓이면 실제 횟수로 바뀌어요. 질문 내용은 저장하지 않아요.`
-    : "맞춤 탭에서 이 상황을 고르고 물은 질문의 답에 인용된 조례를 센 값이에요. 질문 내용은 저장하지 않아요."));
+  box.append(el("p", { class: "stat-note" }, "맞춤 탭에서 이 상황을 고르고 물은 질문의 답에 인용된 조례를 센 값이에요. 질문 내용은 저장하지 않아요."));
   return box;
 }
 

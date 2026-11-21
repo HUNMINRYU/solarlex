@@ -8,8 +8,6 @@ import kb
 TARGET_PREFIX = "대상:"
 RELATIONS = ("BENEFITS", "OBLIGES")
 USAGE_DB = config.DATA / "usage.db"
-USAGE_EXAMPLE = config.DATA / "usage_example.json"
-MIN_ANSWERS_FOR_STATS = 20
 MAX_FOLLOW_UPS = 3
 MAX_RECOMMENDED = 6
 QUESTION_SCHEMA = {"type": "json_schema", "json_schema": {"name": "recommended_questions", "strict": True, "schema": {
@@ -100,11 +98,7 @@ def record_answer(situations, citation):
 def answers_by_ordinance(situation):
     with _usage() as usage:
         rows = usage.execute("SELECT law, answers FROM situation_answers WHERE situation = ? ORDER BY answers DESC", (situation,)).fetchall()
-    total = sum(answers for _, answers in rows)
-    example = total < MIN_ANSWERS_FOR_STATS
-    if example:
-        rows = sorted(json.loads(USAGE_EXAMPLE.read_text(encoding="utf-8")).get(situation, {}).items(), key=lambda row: -row[1])
-    return {"situation": situation, "total": total, "minimum": MIN_ANSWERS_FOR_STATS, "example": example,
+    return {"situation": situation,
             "by_ordinance": [{"law": law, "answers": answers} for law, answers in rows]}
 
 
