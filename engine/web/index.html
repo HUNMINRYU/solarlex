@@ -626,6 +626,7 @@
   #ask-form, .scope-wrap, #guide-view { animation: view-in .28s ease-out; }
   body.asked .modes { margin-top: 16px; }
   body.guiding #ask-form, body.guiding #voice-status, body.guiding .scope-wrap, body.guiding #result { display: none; }
+  @media (min-width: 48rem) { #guide-view { width: 90%; margin-inline: auto; } }
   .guide-form { margin: 0; padding: 22px clamp(16px, 4vw, 28px) 20px; border-radius: var(--r-lg); background: var(--card); box-shadow: var(--shadow); }
   .guide-form h2 { margin: 0 0 18px; font-size: 1.0625rem; font-weight: 500; color: var(--ink-2); }
   .guide-form fieldset:last-of-type { margin-bottom: 0; }
