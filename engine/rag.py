@@ -231,6 +231,7 @@ def expand_queries(question, hits=None):
         {"role": "system", "content": (
             "너는 서울특별시 조례 검색 도우미다. 질문에 답하려면 찾아야 할 조례 조항을 떠올리고, "
             "그 조항을 찾기 위한 검색어를 조문에 쓰일 법조문 용어로 2~3개 만든다. "
+            "시민이 쓰는 말은 조문 용어로 바꾼다(월세→차임, 보증금→주택임차보증금, 따릉이→공공자전거, 할인→감면, 주차비→주차요금, 벌금→과태료). "
             "원칙 조항과 함께 예외·감면 중복·제재(과태료)·절차 조항이 필요하면 각각 따로 검색어를 만든다. 결과는 JSON으로 낸다.")},
         {"role": "user", "content": user}],
         response_format=EXPAND_SCHEMA)
@@ -256,7 +257,7 @@ def pick_delegating(question, cands):
             "[질문]이 묻는 세부 내용(금액·비율·기준·크기·시간·절차 등)을 맡긴 조항의 번호를 고른다. "
             "먼저 target에 질문의 대상(어떤 시설·행위·사람의 무엇을 묻는지)을 조문에 쓰일 용어로 바꿔 짧게 적는다. "
             "시민이 쓰는 말은 조문 용어로 바꾸고(따릉이→공공자전거, 할인→감면, 주차비→주차요금, 벌금→과태료), 질문자의 사정(나이·자격·사연)은 빼고 묻는 것만 남긴다"
-            "(예: '공공자전거 이용요금 감면율'). "
+            "(예: '시립수영장 이용료 감면율'). "
             "reason에는 후보마다 그 조항이 맡긴 대상이 질문의 대상과 같은지 따진다. "
             "과태료·사용료·요금의 부과 기준 전체를 다른 법령의 별표나 규칙에 맡긴 조항은, 질문이 그 조례 분야(공원·주차장·금연구역 등)에서 생긴 과태료·사용료·요금의 금액을 물으면 대상이 같다. "
             "대상이 다른 조항(주제는 비슷하지만 다른 시설·제도·요금에 관한 것)은 고르지 않는다. 보통 하나이고, 꼭 맞는 조항이 없으면 ids를 빈 배열로 둔다. 결과는 JSON으로 낸다.")},
@@ -288,12 +289,12 @@ def clauses_establishing(question, cands):
         {"role": "system", "content": (
             "너는 서울특별시 조례 조항을 가려내는 도우미다. [질문]은 어떤 대상의 구체 값(금액·한도·기준·시간·절차 등)을 묻는데, 그 값은 조례에 없다. "
             "asked에 질문이 값을 묻는 대상(그 지원·요금·사용료·수당·배상·제도)을 짧게 적고, term에는 그 대상을 조문에 쓰일 용어로 바꾼 검색어를 적는다"
-            "(월세→차임, 보증금→주택임차보증금, 따릉이→공공자전거, 할인→감면, 벌금→과태료. 예: '청년 주거안정 차임 보조'). "
+            "(월세→차임, 보증금→주택임차보증금, 따릉이→공공자전거, 할인→감면, 벌금→과태료. 예: '시립수영장 강습료 부과'). "
             "[후보]마다 establishes에 그 조항이 두거나 시행하도록 정한 것을 짧게 적고, 그것이 asked와 같은 대상이면 same_as_asked를 true로 한다. "
             "조항이 그 대상을 두기만 하고 금액·한도·기준을 정하지 않았어도 대상이 같으면 true다"
-            "(예: '청년 월세 지원금'↔'주택임차보증금 및 차임의 보조 방안 수립·시행', '동물 화장비'↔'공설동물장묘시설 사용료 부과', '분실 배상액'↔'분실한 이용자에게 손해배상 요구'). "
-            "주제만 비슷하고 대상이 다르면 false다: 헬멧 과태료↔안전교육, 보상금·위로금↔이미 낸 요금의 반환이나 감면, 지원금↔과태료, "
-            "질문이 전제한 사정(시스템 장애, 사고, 분쟁)을 조항이 다루지 않는 경우, 연락처·전화번호·운영 시간표 같은 안내 정보. 결과는 JSON으로 낸다.")},
+            "(예: '장학금이 얼마'↔'장학금 지급 방안 수립·시행', '수영장 강습료'↔'강습료를 받을 수 있다', '열쇠 분실 변상액'↔'분실한 이용자에게 변상 요구'). "
+            "주제만 비슷하고 대상이 다르면 false다: 어떤 행위의 과태료↔그 행위의 예방 교육, 위로금↔이미 낸 요금의 반환이나 감면, 지원금↔과태료, "
+            "질문이 전제한 사정(정전, 사고, 분쟁)을 조항이 다루지 않는 경우, 연락처·전화번호·운영 시간표 같은 안내 정보. 결과는 JSON으로 낸다.")},
         {"role": "user", "content": f"[질문]\n{question}\n\n[후보]\n{listing}"}],
         response_format=ESTABLISHING_SCHEMA)
     try:
@@ -525,15 +526,15 @@ SYSTEM = """너는 서울특별시 조례 질의응답 도우미다.
   예) "돈을 내야 하나요?"에 안 내도 되면 "아니요, 내지 않아도 됩니다"("네, 내지 않아도 됩니다"는 틀림). "할인되나요?"에 할인되면 "네".
   질문자가 밝힌 상황(나이·자격 등)이 근거의 조건에 해당하면 그 상황의 결론으로 답한다(예: "11주 다녔는데 신청되나요?"에 10주 이상 이용 조건이 있으면 "네").
 - claims에는 답의 핵심 사실 하나마다 {statement, evidence_id}를 넣는다. evidence_id는 그 사실이 문자 그대로 적혀 있는 근거 번호다.
-- 근거의 수치는 질문이 묻는 바로 그 대상(그 시설·요금·제도)에 관한 것일 때만 답에 쓴다. 이름이 비슷해도 다른 대상의 요금표·기준(예: 놀이터 이용료를 묻는데 근거에는 주차장 요금표뿐)이면 그 수치를 쓰지 않는다.
+- 근거의 수치는 질문이 묻는 바로 그 대상(그 시설·요금·제도)에 관한 것일 때만 답에 쓴다. 이름이 비슷해도 다른 대상의 요금표·기준(예: 수영장 이용료를 묻는데 근거에는 체육관 대관료 표뿐)이면 그 수치를 쓰지 않는다.
 - 같은 조의 여러 항이 함께 있으면, 항마다 내용을 비교해 그 사실을 실제로 규정한 항을 고른다. 주제만 비슷한 항은 고르지 않는다.
 - 원칙과 예외(감면 중복 금지, 과태료, 절차 등)를 함께 썼다면 각각의 근거를 따로 claims에 넣는다.
 - 근거에 "다만"으로 시작하는 단서나 예외가 있고, 그것이 질문자의 결론에 조건을 붙이거나 결론을 바꾸면 답에 한 문장으로 함께 쓴다.
 - 질문이 여러 가지를 묻으면(예: 몇 년마다 세우는지, 매년 무엇을 세우는지, 어디에 보고하는지) 물음마다 그것을 규정한 조항을 따로 claims에 넣는다. 서로 다른 항의 내용을 claim 하나에 합치지 않는다.
 - 질문이 계산(금액·인원·기간 등)을 요구하면 근거의 수치로 계산한 최종 값까지 답에 쓴다(예: 가액 2억원, 연 5/1,000, 3개월이면 25만원).
 - given에는 질문자가 말한 수치(시간·나이·인원·금액·면적·기간 등)마다 "질문자의 수치 ↔ 근거의 기준값 → 충족 여부"를 한 줄씩 적는다
-  (예: "마감 90분 전 입차 ↔ 운영 종료 2시간 이내 → 해당"). 질문에 수치가 없으면 빈 배열이다.
-  kind가 answer이면 given에 적은 질문자의 수치와 기준값을 모두 answer에 숫자 그대로 쓴다(예: '90분 전에 들어오셨으므로 운영 종료 2시간 이내에 해당해').
+  (예: "마감 45분 전 입장 ↔ 종료 1시간 이내 → 해당"). 질문에 수치가 없으면 빈 배열이다.
+  kind가 answer이면 given에 적은 질문자의 수치와 기준값을 모두 answer에 숫자 그대로 쓴다(예: '45분 전에 들어오셨으므로 종료 1시간 이내에 해당해').
 - check를 answer보다 먼저 쓴다. 근거의 조건(수치·비율·기간·합산 방법·예외)을 질문자가 말한 사실에 하나씩 대입해 충족인지 미충족인지 따지고 결론을 낸다.
   '이상·이하·초과·미만'은 경계값을 정확히 따진다(50% 이상이면 정확히 50%도 충족). 여러 값을 합치거나 하나로 보는 규정이 있으면 합산한 값으로 따진다.
   질문자가 말한 수치(인원·나이·면적·기간·시간 등)는 근거의 기준값과 나란히 answer에 쓴다(예: '8명 중 2명이라 정확히 25%', '마감 45분 전이라 1시간 이내').
@@ -547,20 +548,21 @@ SYSTEM = """너는 서울특별시 조례 질의응답 도우미다.
 - scope: 질문이 어느 규범을 묻는지 먼저 정한다. 서울특별시 조례의 내용을 묻으면 "seoul"이다.
   자치구(○○구)나 다른 시·도의 조례·규칙을 묻거나, 국가 법령(○○법·시행령·시행규칙)의 기준·처벌을 묻거나, 조문을 지어내라고 요구하면 "other"이고 이때 kind는 "none"이다.
 - stated: 질문이 묻는 것(값·기준·가부)의 답이 조례 근거에 직접 적혀 있으면 true다. '근거가 있나요', '되나요'에 조례 조항이 그렇다고 정했으면 true이고,
+  질문이 낱말 몇 개뿐이어도(예: '수영장 할인') 그 주제의 값·기준·대상이 조례 근거에 적혀 있으면 true다.
   묻는 값이 조례에 없어 다른 규정에 맡겼거나 아예 없으면 false다. stated가 true이면 kind는 answer다.
 - kind는 넷 중 하나다.
   "answer": 질문이 묻는 내용(값·기준·가부)이 조례 근거에 적혀 있다.
   답이 조건(원칙과 예외, 이용자·차량 유형 등)에 따라 갈리거나 질문이 짧아 대상이 하나로 정해지지 않아도, 묻는 내용을 정한 규정이 근거에 있으면 answer이고
   원칙부터 경우를 나눠 답한다(예: '원칙적으로 무료이고, 특별한 사유가 있으면 1건 700원이라 3건이면 2,100원').
-  짧은 질문(예: '주차 감면')에는 대표적인 경우 2~4개와 그 수치를 요약한다.
+  짧은 질문(예: '수영장 할인')에는 대표적인 경우 2~4개와 그 수치를 요약한다.
   '근거가 있나요', '받을 수 있나요', '해도 되나요'처럼 가부를 묻는 질문에 조례 조항이 그 가부를 정했으면 answer다.
   그 제도의 세부 운영을 시장에게 맡긴 조항이 옆에 있어도 질문이 그 세부를 묻지 않았으면 answer이고, 맡긴 조항은 claims에 넣지 않는다.
   "delegated": 질문의 대상을 직접 다루는 조례 조항이 근거에 있고, 그 조항이 질문이 묻는 세부 내용(금액·비율·기준·크기·시간·절차 등)을
   "시장이 따로 정한다", "규칙으로 정한다", "…고시를 따른다", "…조례로 따로 정한다", "…령 별표와 같다"처럼 시장·규칙·고시·다른 법령에 맡겼다.
   "topic": 질문의 대상(그 지원·요금·사용료·수당·배상·제도) 그 자체를 두거나 시행하도록 정한 조례 조항이 근거에 있지만,
-  묻는 값(금액·한도·기준 등)은 조례에 없고 맡긴다는 문구도 없다(예: '청년 월세 지원금이 얼마'↔'차임의 보조 방안을 수립·시행하여야 한다', '화장비가 얼마'↔'사용료를 부과할 수 있다').
-  "none": 조례 근거에 질문의 대상을 두는 조항이 없다. 주제만 비슷한 조항, 다른 종류의 돈이나 제도를 정한 조항(보상금을 묻는데 요금 반환 조항뿐),
-  질문이 전제한 사정(시스템 장애, 사고 등)을 다루지 않는 조항, 연락처·전화번호 같은 안내 정보가 모두 none이다.
+  묻는 값(금액·한도·기준 등)은 조례에 없고 맡긴다는 문구도 없다(예: '장학금이 얼마'↔'장학금 지급 방안을 수립·시행하여야 한다', '강습료가 얼마'↔'강습료를 받을 수 있다').
+  "none": 조례 근거에 질문의 대상을 두는 조항이 없다. 주제만 비슷한 조항, 다른 종류의 돈이나 제도를 정한 조항(위로금을 묻는데 이용료 반환 조항뿐),
+  질문이 전제한 사정(정전, 사고 등)을 다루지 않는 조항, 연락처·전화번호 같은 안내 정보가 모두 none이다.
   묻는 값을 조례에서 확인할 수 없다는 것만으로는 none이 아니다. 질문의 대상(그 과태료·요금·지원 등)을 다루는 조례 조항이 근거에 있으면,
   질문이 '조례 안에서 알려 달라'고 했더라도 값을 다른 법령·규칙에 맡겼으면 delegated, 맡긴다는 문구가 없으면 topic이다.
   조례 조항이 값을 맡긴 상위법·시행령 별표의 수치가 참고 근거에 있어도 그 수치는 쓰지 않고 delegated로 안내한다.
@@ -675,13 +677,14 @@ def _generate(question, hits, note=None):
 
     for _ in range(2):   # 답이 중간에 잘려 JSON이 깨지면 다시 부릅니다(dev D09). 두 번 연달아 깨진 적이 있어 세 번까지(X03, 2026-11-19)
         try:
-            return _consistent(json.loads(ask()))
+            return json.loads(ask())
         except json.JSONDecodeError:
             pass
-    return _consistent(json.loads(ask()))
+    return json.loads(ask())
 
 
-def _consistent(out):
+def _classified(question, hits, note=None):
+    out = _generate(question, hits, note)
     if out["stated"] and out["kind"] in ("delegated", "topic"):
         out["kind"] = "answer"
     return out
@@ -745,12 +748,21 @@ def answer(question):
 
 EVIDENCE_NO = re.compile(r"근거\s?(\d+)")
 RATIO = re.compile(r"(\d[\d,]*)분의 ?(\d[\d,]*(?:\.\d+)?)")
-SUBITEM = re.compile(r"(제\d+조(?:의\d+)?(?: ?제\d+항)?) ?제\d+호(?:의\d+)?(?: ?[가-하]목)?")
+SUBITEM = re.compile(r"(제\d+조(?:의\d+)?(?: ?제\d+항)?) ?제\d+호(?:의\d+)?(?: ?[가-하]목)?(?:(은|는|이|가|을|를|과|와|으로|로)(?![가-힣]))?")
+PARTICLE_AFTER_CONSONANT = {"는": "은", "가": "이", "를": "을", "와": "과", "로": "으로"}
+PARTICLE_AFTER_VOWEL = {after_consonant: after_vowel for after_vowel, after_consonant in PARTICLE_AFTER_CONSONANT.items()}
+
+
+def _without_subitem(m):
+    clause, particle = m.group(1), m.group(2) or ""
+    agreeing = PARTICLE_AFTER_CONSONANT if clause.endswith("항") else PARTICLE_AFTER_VOWEL
+    return clause + agreeing.get(particle, particle)
 
 
 PERCENT_STATED_TWICE = re.compile(r"(\d[\d.]*)% ?\((?:\1%|\1 ?퍼센트)\)")
 PARTICLE_AFTER_PERCENT = ((re.compile(r"%을(?![가-힣])"), "%를"), (re.compile(r"%은(?![가-힣])"), "%는"),
-                          (re.compile(r"%이(?=\s)"), "%가"))
+                          (re.compile(r"%이(?=\s)"), "%가"), (re.compile(r"%으로(?![가-힣])"), "%로"),
+                          (re.compile(r"%과(?![가-힣])"), "%와"))
 
 
 def _ratio_as_percent(m):
@@ -764,7 +776,7 @@ def plain_text(answer):
     answer = PERCENT_STATED_TWICE.sub(r"\1%", RATIO.sub(_ratio_as_percent, answer))
     for wrong, right in PARTICLE_AFTER_PERCENT:
         answer = wrong.sub(right, answer)
-    return SUBITEM.sub(r"\1", answer)
+    return SUBITEM.sub(_without_subitem, answer)
 
 
 def name_evidence(answer, hits):
@@ -870,15 +882,15 @@ def _answer_once(question):
     if config.USE_REFERENCE:
         hits = hits + reference_hits(question)
 
-    out = _generate(question, hits)
+    out = _classified(question, hits)
     if config.USE_ANNEX_NUMCHECK and out["kind"] == "answer":
         gaps = annex_number_gaps(out["claims"], hits)
         if gaps:
-            out = _generate(question, hits, f"숫자 {', '.join(gaps)}는 인용한 별표 원문에 없습니다. 별표의 해당 칸 숫자를 그대로 쓰라.")
+            out = _classified(question, hits, f"숫자 {', '.join(gaps)}는 인용한 별표 원문에 없습니다. 별표의 해당 칸 숫자를 그대로 쓰라.")
     if out["kind"] != "none":
         leaked = reference_only_numbers(out["answer"], question, hits)
         if leaked:
-            out = _generate(question, hits, f"숫자 {', '.join(sorted(leaked))}는 인용할 수 없는 참고 근거에만 있습니다. 답에 쓰지 말라. "
+            out = _classified(question, hits, f"숫자 {', '.join(sorted(leaked))}는 인용할 수 없는 참고 근거에만 있습니다. 답에 쓰지 말라. "
                                             "조례 조항이 그 내용을 규칙·고시 등에 맡겼으면 kind를 delegated로 하라.")
     if config.USE_SELF_CHECK and out["kind"] == "answer" and out["claims"]:
         chk = self_check(question, out, hits)
@@ -888,14 +900,14 @@ def _answer_once(question):
             extra = list({h["label"]: h for h in extra}.values())
             if extra:
                 hits = hits + extra
-                out = _generate(question, hits)
+                out = _classified(question, hits)
         else:
             ok = chk["supported"]
             kept = [c for c, s in zip(out["claims"], ok) if s]
             if config.USE_CLAIM_CHECK and kept and len(ok) == len(out["claims"]):
                 out["claims"] = kept
     if out["scope"] != "seoul":
-        return dict(UNKNOWN), [], True
+        return dict(UNKNOWN), [], False
 
     used, refs = _cited_clauses(out, hits)
     if out["kind"] != "answer" and used:
