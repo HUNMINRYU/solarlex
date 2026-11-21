@@ -87,6 +87,11 @@
   .voice-btn:disabled { opacity: .5; cursor: progress; }
   .listen { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 16px 0 0; font-size: 0.8125rem; color: var(--ink-3); }
   .listen[hidden] { display: none; }
+  .next-questions { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 20px; }
+  .next-questions p { margin: 0; font-weight: 600; }
+  .next-questions .btn-quiet { margin-top: 0; height: auto; min-height: 40px; padding: 8px 16px; text-align: left; white-space: normal; }
+  .loading > .btn-quiet { margin-top: 16px; }
+  .ask textarea[readonly] { color: var(--ink-2); }
   body.asked .ask { grid-template-areas: "label label" "input btn" "scope scope"; border-width: 2px; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(37, 110, 244, .12); padding: 20px 24px; }
   body.asked .ask textarea { font-size: 1.375rem; font-weight: 500; }
 
@@ -737,6 +742,9 @@ function showLoading(question) {
   box.innerHTML = `<div class="status"><svg class="spinner" viewBox="0 0 24 24" aria-hidden="true"><circle class="track" cx="12" cy="12" r="9.5"/><circle class="arc" cx="12" cy="12" r="9.5"/></svg><span id="status-text">관련 서울시 조례를 찾는 중이에요</span><small id="elapsed">0초</small></div>
     <p>조례 6종 원문에서 근거를 찾고, 답과 근거가 맞는지 확인한 뒤 보여 드려요.</p>
     <ul class="scan" aria-hidden="true">${ORD.map((k, i) => `<li style="--c:var(--ord-${k});--d:${speeds[i][0]}s;--delay:${speeds[i][1]}s"></li>`).join("")}</ul>`;
+  const cancel = el("button", { type: "button", class: "btn btn-quiet" }, "질문 취소");
+  cancel.onclick = () => { showAddress(""); goHome(question); };
+  box.append(cancel);
   result.replaceChildren(echo(question), botReply(box));
   live.textContent = "관련 서울시 조례를 찾는 중입니다.";
   tick = setInterval(() => {
@@ -744,11 +752,7 @@ function showLoading(question) {
     const e = $("#elapsed"); if (e) e.textContent = `${sec}초`;
     if (Date.now() - started > SLOW_MS && !$("#slow")) {
       $("#status-text").textContent = "근거를 꼼꼼히 확인하느라 시간이 걸리고 있어요";
-      const slow = el("div", { class: "slow", id: "slow" }, `<span>보통 10초 안팎이 걸려요.</span>`);
-      const stop = el("button", { type: "button", class: "btn btn-quiet" }, "중단");
-      stop.onclick = () => controller?.abort();
-      slow.append(stop);
-      box.append(slow);
+      box.append(el("div", { class: "slow", id: "slow" }, `<span>보통 10초 안팎이 걸려요. 조금만 더 기다려 주세요.</span>`));
     }
   }, 250);
 }
@@ -1299,7 +1303,7 @@ function verticalMap(m) {
 }
 
 function renderState(question, kind, savedAt) {
-  const box = el("div", { class: `state state-${kind === "error" || kind === "aborted" ? "error" : "unknown"}` });
+  const box = el("div", { class: `state state-${kind === "error" ? "error" : "unknown"}` });
   const frag = [];
   if (kind === "unknown") {
     // 근거가 없을 때는 연관 조례 지도를 그리지 않습니다. 검색에만 걸린 조례를 보여 주면 관련 규정이 있다고 오해하기 쉽습니다.
@@ -1307,6 +1311,9 @@ function renderState(question, kind, savedAt) {
       <p>서울시 조례 6종에서 이 질문에 답할 근거를 찾지 못했어요. 관련 규정이 없다는 뜻은 아니에요.</p>
       <p>자치구 조례나 국가 법령에 관한 내용이라면 120 다산콜재단에 문의해 주세요.</p>
       <p class="about">SolarLex는 서울시 조례 6종 원문에서 근거 조항을 찾아 답해요. 근거가 없을 때는 지어내지 않고 이렇게 확인 불가로 알려 드려요.</p>`;
+    const next = el("div", { class: "next-questions" }, `<p>이런 질문에는 답할 수 있어요.</p>`);
+    EXAMPLES.slice(0, 3).forEach((q) => { const b = el("button", { type: "button", class: "btn btn-quiet" }, esc(q)); b.onclick = () => ask(q); next.append(b); });
+    box.append(next);
     live.textContent = "확인 불가. 조례에서 근거를 찾지 못했습니다.";
     if (savedAt) frag.push(offlineNote(savedAt));
   } else if (kind === "offline") {
@@ -1314,13 +1321,11 @@ function renderState(question, kind, savedAt) {
       <p>지금은 네트워크 없이 미리 저장한 답변으로 시연하고 있어요. 질문칸을 비운 채 질문하기를 누르면 질문칸에 보이는 예시 질문으로 물어볼 수 있어요.</p>`;
     live.textContent = "오프라인 시연 모드입니다. 저장해 둔 질문만 답할 수 있습니다.";
   } else {
-    box.innerHTML = kind === "aborted"
-      ? `<h2>${ICON.alert}질문을 중단했어요</h2><p>다시 물어보려면 아래 버튼을 누르세요.</p>`
-      : `<h2>${ICON.alert}답변을 불러오지 못했어요</h2><p>서버와 연결하는 중에 문제가 생겼어요. 잠시 뒤 다시 시도해 주세요.</p>`;
+    box.innerHTML = `<h2>${ICON.alert}답변을 불러오지 못했어요</h2><p>서버와 연결하는 중에 문제가 생겼어요. 잠시 뒤 다시 시도해 주세요.</p>`;
     const retry = el("button", { type: "button", class: "btn btn-quiet" }, "다시 시도");
     retry.onclick = () => ask(question);
     box.append(retry);
-    live.textContent = kind === "aborted" ? "질문을 중단했습니다." : "답변을 불러오지 못했습니다.";
+    live.textContent = "답변을 불러오지 못했습니다.";
   }
   current = null;
   result.replaceChildren(echo(question), botReply(...frag, box));
@@ -1392,13 +1397,33 @@ function listenRow(answer) {
 }
 
 // 요청마다 자기 것(mine)을 기억합니다. 홈으로 가거나 새 질문을 보내 주인이 바뀐 요청은 끝나도 화면을 건드리지 않습니다.
+function setBusy(busy) {
+  input.readOnly = busy;
+  submit.disabled = busy; submit.textContent = busy ? "찾는 중…" : "질문하기";
+}
+
+function showAddress(question) {
+  const next = question ? `?q=${encodeURIComponent(question)}` : location.pathname;
+  if (location.search !== (question ? next : "")) history.pushState({}, "", next);
+}
+
+function goHome(keepQuestion = "") {
+  controller?.abort(); controller = null; clearInterval(tick);
+  setBusy(false);
+  current = null; result.replaceChildren(); input.value = keepQuestion; markChips(null);
+  live.textContent = "";
+  document.body.classList.remove("asked");
+  window.scrollTo({ top: 0 }); input.focus();
+}
+
 async function ask(question) {
   const mine = new AbortController();
   controller?.abort(); clearInterval(tick);
   controller = mine;
   document.body.classList.add("asked");
   input.value = question; markChips(question);
-  submit.disabled = true; submit.textContent = "찾는 중…";
+  setBusy(true);
+  showAddress(question);
   showLoading(question);
   result.scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth", block: "start" });
   try {
@@ -1412,33 +1437,28 @@ async function ask(question) {
     else renderAnswer(question, data);
   } catch (e) {
     if (controller !== mine) return;
-    renderState(question, e.name === "AbortError" ? "aborted" : "error");
+    renderState(question, "error");
   } finally {
     if (controller === mine) {
       controller = null; clearInterval(tick);
-      submit.disabled = false; submit.textContent = "질문하기";
+      setBusy(false);
     }
   }
 }
 
 document.querySelectorAll("[data-ord]").forEach((n) => { n.outerHTML = ordIcon(n.dataset.ord, n.className.replace("oi", "").trim()); });
-form.addEventListener("submit", (e) => { e.preventDefault(); const q = input.value.trim(); ask(q || EXAMPLES[exIdx]); });
+form.addEventListener("submit", (e) => { e.preventDefault(); if (controller) return; const q = input.value.trim(); ask(q || EXAMPLES[exIdx]); });
 input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); } });
 document.querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => ask(b.dataset.q)));
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && current && current.selected) { const id = current.selected; select(null); document.querySelector(`.kg-hit[data-id="${CSS.escape(id)}"]`)?.focus(); } });
 NARROW.addEventListener("change", () => { if (!current || !current.mapDrawn) return; if ($("#panel-map") && !$("#panel-map").hidden) drawMap(); else current.mapDrawn = false; });
-$("#home-link").addEventListener("click", (e) => {
-  e.preventDefault();
-  controller?.abort(); controller = null; clearInterval(tick);
-  submit.disabled = false; submit.textContent = "질문하기";
-  current = null; result.replaceChildren(); input.value = ""; markChips(null);
-  live.textContent = "";
-  document.body.classList.remove("asked");
-  window.scrollTo({ top: 0 }); input.focus();
-});
+$("#home-link").addEventListener("click", (e) => { e.preventDefault(); showAddress(""); goHome(); });
+const askedInAddress = () => new URLSearchParams(location.search).get("q");
+window.addEventListener("popstate", () => { const q = askedInAddress(); if (q) ask(q); else goHome(); });
 // ---- 질문칸 안내 문구: 예시 질문을 타자 치듯 하나씩 보여 줍니다 ----
 const EXAMPLES = ["저 27살인데 서울시 청년 정책 대상에 들어가나요?", "첫 차로 경차를 샀는데 서울 공영주차장에서 할인되나요?", "서울시 청년 월세 지원금은 한 달에 얼마인가요?", "따릉이 1시간 이용요금이 얼마예요?", "서울 금연구역에서 담배 피우다 걸리면 과태료가 얼마예요?", "자취방에서 유기견을 입양하면 동물등록 수수료를 내야 하나요?"];
 let exIdx = 0;
+if (askedInAddress()) ask(askedInAddress());
 (function typeExamples() {
   const PRE = "예) ", TYPE = 70, ERASE = 28, HOLD = 2400, GAP = 450;
   const set = (t) => input.setAttribute("placeholder", t);
