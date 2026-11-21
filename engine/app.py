@@ -7,6 +7,8 @@
   POST /ask       대회 채점용. 필드 4개(answer, citation, source_url, effective_date)만 돌려줍니다.
   POST /demo/ask  시연 화면용. 위 4개에 인용 조항 원문(evidence)과 연관 조례 지식그래프(graph)를 더합니다.
                   DEMO_OFFLINE=1이면 미리 저장한 응답(web/demo_cache.json)을 돌려줍니다(offline 표시).
+  POST /demo/stt  시연 화면용. 녹음한 음성(본문 그대로)을 글로 바꿉니다. OPENAI_API_KEY가 없으면 503.
+  POST /demo/tts  시연 화면용. 답 문장을 음성(mp3)으로 바꿉니다. OPENAI_API_KEY가 없으면 503.
   GET  /          시민용 시연 화면(web/index.html)
   GET  /health    상태 확인
 
@@ -19,12 +21,13 @@ import json
 import logging
 
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 import config
 import kb
 import rag
+import voice
 
 app = FastAPI(title="서울시 조례 Q&A")
 # 시연 화면 글꼴(Pretendard GOV 공식 동적 서브셋, OFL). CDN 없이도 화면이 같게 보이도록 서버가 직접 내보냅니다.
@@ -76,10 +79,42 @@ async def demo_ask(request: Request):
     return {**result, "evidence": evidence, "graph": graph}
 
 
+VOICE_OFF = JSONResponse({"error": "voice_off"}, status_code=503)
+
+
+@app.post("/demo/stt")
+async def demo_stt(request: Request):
+    if not voice.available():
+        return VOICE_OFF
+    audio, content_type = await request.body(), request.headers.get("content-type", "")
+    if not audio or len(audio) > voice.MAX_AUDIO_BYTES or voice.media_type(content_type) not in voice.FILE_EXTENSION:
+        return JSONResponse({"error": "bad_audio"}, status_code=400)
+    try:
+        return {"text": await asyncio.to_thread(voice.transcribe, audio, content_type)}
+    except Exception as e:  # noqa: BLE001
+        log.warning("stt failed: %r", e)
+        return JSONResponse({"error": "stt_failed"}, status_code=502)
+
+
+@app.post("/demo/tts")
+async def demo_tts(request: Request):
+    if not voice.available():
+        return VOICE_OFF
+    text = extract_question(await request.json()).strip()
+    if not text or len(text) > voice.MAX_SPEECH_CHARS:
+        return JSONResponse({"error": "bad_text"}, status_code=400)
+    try:
+        return Response(await asyncio.to_thread(voice.speak, text), media_type="audio/mpeg")
+    except Exception as e:  # noqa: BLE001
+        log.warning("tts failed: %r", e)
+        return JSONResponse({"error": "tts_failed"}, status_code=502)
+
+
 @app.get("/health")
 def health():
     # db: 벡터 DB(data/solarlex.db)가 준비됐는지. false면 JSON/npy로 검색 중이고 연관 조례 지도는 빠집니다.
-    return {"ok": True, "chunk_unit": config.CHUNK_UNIT, "verify": config.USE_VERIFY, "db": kb.ready(config.CHUNK_UNIT)}
+    return {"ok": True, "chunk_unit": config.CHUNK_UNIT, "verify": config.USE_VERIFY, "db": kb.ready(config.CHUNK_UNIT),
+            "voice": voice.available()}
 
 
 @app.post("/ask")

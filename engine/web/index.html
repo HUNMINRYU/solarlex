@@ -78,6 +78,15 @@
   .scope { grid-area: scope; display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0; padding: 0; list-style: none; font-size: 0.8125rem; color: var(--ink-3); }
   .scope li { display: inline-flex; align-items: center; gap: 6px; }
   .ask .btn-primary { grid-area: btn; }
+  .ask-actions { grid-area: btn; display: flex; align-items: center; gap: 8px; }
+  .ask-actions .btn-primary { flex: 1; }
+  .voice-btn { display: inline-grid; place-items: center; flex: none; width: 44px; height: 44px; padding: 0; border: 1px solid var(--line); border-radius: 50%; background: var(--card); color: var(--ink-2); cursor: pointer; }
+  .voice-btn[hidden] { display: none; }
+  .voice-btn:hover { color: var(--ink); border-color: var(--primary); }
+  .voice-btn[aria-pressed="true"] { background: #c0392b; border-color: #c0392b; color: #fff; }
+  .voice-btn:disabled { opacity: .5; cursor: progress; }
+  .listen { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 16px 0 0; font-size: 0.8125rem; color: var(--ink-3); }
+  .listen[hidden] { display: none; }
   body.asked .ask { grid-template-areas: "label label" "input btn" "scope scope"; border-width: 2px; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(37, 110, 244, .12); padding: 20px 24px; }
   body.asked .ask textarea { font-size: 1.375rem; font-weight: 500; }
 
@@ -552,7 +561,10 @@
   <form id="ask-form" class="ask" novalidate>
     <label for="question" class="sr-only">질문</label>
     <textarea id="question" name="question" rows="1" placeholder="예) 저 27살인데 서울시 청년 정책 대상에 들어가나요?" autocomplete="off"></textarea>
-    <button class="btn btn-primary" type="submit" id="submit">질문하기</button>
+    <div class="ask-actions">
+      <button type="button" class="voice-btn" id="mic" hidden aria-pressed="false" title="말로 묻기"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v5"/></svg><span class="sr-only">말로 묻기</span></button>
+      <button class="btn btn-primary" type="submit" id="submit">질문하기</button>
+    </div>
   </form>
 
   <div class="scope-wrap"><span class="scope-label">서울 조례 6종</span>
@@ -765,6 +777,7 @@ function renderAnswer(question, data) {
     li.append(b); refs.append(li);
   });
   head.append(refs);
+  head.append(listenRow(data.answer));
   head.append(el("p", { class: "trust" }, `${ICON.shield}<span>조항 번호, 원문 링크, 시행일은 AI가 쓰지 않고 검색된 조례 원문에서 그대로 가져옵니다.</span>`));
   frag.push(head);
 
@@ -1317,9 +1330,72 @@ function markChips(question) {
   document.querySelectorAll(".chip").forEach((b) => b.setAttribute("aria-current", String(b.dataset.q === question)));
 }
 
+// ---- 음성: 말로 묻기(녹음 → /demo/stt)와 답 듣기(/demo/tts → 재생). 서버에 음성 키가 없으면 버튼을 숨깁니다 ----
+const mic = $("#mic");
+let voiceOn = false, recorder = null, speaking = null;
+fetch("/health").then((r) => r.json()).then((h) => {
+  voiceOn = Boolean(h.voice);
+  mic.hidden = !(voiceOn && navigator.mediaDevices && window.MediaRecorder);
+  document.querySelectorAll(".listen").forEach((n) => { n.hidden = !voiceOn; });
+}).catch(() => {});
+
+async function startRecording() {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const chunks = [];
+  recorder = new MediaRecorder(stream);
+  recorder.ondataavailable = (e) => chunks.push(e.data);
+  recorder.onstop = async () => {
+    stream.getTracks().forEach((t) => t.stop());
+    const audio = new Blob(chunks, { type: recorder.mimeType });
+    recorder = null;
+    mic.setAttribute("aria-pressed", "false"); mic.disabled = true;
+    live.textContent = "말씀하신 내용을 글로 바꾸고 있어요.";
+    try {
+      const res = await fetch("/demo/stt", { method: "POST", headers: { "Content-Type": audio.type }, body: audio });
+      if (!res.ok) throw new Error(String(res.status));
+      const { text } = await res.json();
+      input.value = text; input.dispatchEvent(new Event("input")); input.focus();
+      live.textContent = text ? "받아 적었어요. 맞으면 질문하기를 눌러 주세요." : "알아듣지 못했어요. 다시 말씀해 주세요.";
+    } catch (e) {
+      live.textContent = "음성을 글로 바꾸지 못했어요. 글로 입력해 주세요.";
+    } finally { mic.disabled = false; }
+  };
+  recorder.start();
+  mic.setAttribute("aria-pressed", "true");
+  live.textContent = "듣고 있어요. 다 말씀하시면 마이크를 한 번 더 눌러 주세요.";
+  setTimeout(() => { if (recorder && recorder.state === "recording") recorder.stop(); }, 20000);
+}
+mic.addEventListener("click", () => {
+  if (recorder && recorder.state === "recording") return recorder.stop();
+  startRecording().catch(() => { live.textContent = "마이크를 쓸 수 없어요. 브라우저의 마이크 권한을 확인해 주세요."; });
+});
+
+function listenRow(answer) {
+  const row = el("p", { class: "listen" });
+  row.hidden = !voiceOn;
+  const b = el("button", { type: "button", class: "btn btn-quiet" }, "답 듣기");
+  b.onclick = async () => {
+    if (speaking) { speaking.pause(); speaking = null; b.textContent = "답 듣기"; return; }
+    b.disabled = true; b.textContent = "준비 중…";
+    try {
+      const res = await fetch("/demo/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: answer.slice(0, 1000) }) });
+      if (!res.ok) throw new Error(String(res.status));
+      speaking = new Audio(URL.createObjectURL(await res.blob()));
+      speaking.onended = () => { speaking = null; b.textContent = "답 듣기"; };
+      await speaking.play();
+      b.textContent = "멈추기";
+    } catch (e) { speaking = null; b.textContent = "답 듣기"; live.textContent = "음성으로 읽어 드리지 못했어요."; }
+    finally { b.disabled = false; }
+  };
+  row.append(b, el("span", {}, "AI가 생성한 음성으로 읽어 드려요."));
+  return row;
+}
+
+// 요청마다 자기 것(mine)을 기억합니다. 홈으로 가거나 새 질문을 보내 주인이 바뀐 요청은 끝나도 화면을 건드리지 않습니다.
 async function ask(question) {
-  controller?.abort();
-  controller = new AbortController();
+  const mine = new AbortController();
+  controller?.abort(); clearInterval(tick);
+  controller = mine;
   document.body.classList.add("asked");
   input.value = question; markChips(question);
   submit.disabled = true; submit.textContent = "찾는 중…";
@@ -1327,17 +1403,21 @@ async function ask(question) {
   result.scrollIntoView({ behavior: reduceMotion() ? "auto" : "smooth", block: "start" });
   try {
     const res = await fetch("/demo/ask", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question }), signal: controller.signal });
+      body: JSON.stringify({ question }), signal: mine.signal });
     if (!res.ok) throw new Error(String(res.status));
     const data = await res.json();
+    if (controller !== mine) return;
     if (data.missing) renderState(question, "offline");
     else if (!data.citation || data.citation.length === 0) renderState(question, "unknown", data.offline && data.saved_at);
     else renderAnswer(question, data);
   } catch (e) {
+    if (controller !== mine) return;
     renderState(question, e.name === "AbortError" ? "aborted" : "error");
   } finally {
-    clearInterval(tick);
-    submit.disabled = false; submit.textContent = "질문하기";
+    if (controller === mine) {
+      controller = null; clearInterval(tick);
+      submit.disabled = false; submit.textContent = "질문하기";
+    }
   }
 }
 
@@ -1349,8 +1429,10 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape" && current 
 NARROW.addEventListener("change", () => { if (!current || !current.mapDrawn) return; if ($("#panel-map") && !$("#panel-map").hidden) drawMap(); else current.mapDrawn = false; });
 $("#home-link").addEventListener("click", (e) => {
   e.preventDefault();
-  controller?.abort(); clearInterval(tick);
+  controller?.abort(); controller = null; clearInterval(tick);
+  submit.disabled = false; submit.textContent = "질문하기";
   current = null; result.replaceChildren(); input.value = ""; markChips(null);
+  live.textContent = "";
   document.body.classList.remove("asked");
   window.scrollTo({ top: 0 }); input.focus();
 });
