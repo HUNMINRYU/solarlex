@@ -616,9 +616,9 @@
   }
 
   .modes { position: relative; display: grid; grid-template-columns: 1fr 1fr; width: fit-content; margin: 0 auto 20px; padding: 4px; border-radius: 999px; background: var(--bg-soft); }
-  .modes::before { content: ""; position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); border-radius: 999px; background: var(--primary); box-shadow: 0 4px 12px rgba(37, 110, 244, .28); transition: transform .28s cubic-bezier(.4, 0, .2, 1); }
+  .modes::before { content: ""; position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); border-radius: 999px; background: var(--primary); box-shadow: 0 4px 12px rgba(37, 110, 244, .28); transition: transform .28s cubic-bezier(.4, 0, .2, 1), background-color .15s, box-shadow .15s; }
   body.guiding .modes::before { transform: translateX(100%); }
-  .modes button { position: relative; min-height: 40px; padding: 0 20px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-2); font: inherit; font-size: 0.9375rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: color .28s; }
+  .modes button { position: relative; min-height: 40px; padding: 0 20px; border: 0; border-radius: 999px; background: transparent; color: var(--ink-2); font: inherit; font-size: 0.9375rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: color .28s, background-color .15s, box-shadow .15s; }
   .modes button[aria-pressed="true"] { color: #fff; }
   html { scrollbar-gutter: stable; }
   body.guiding main.wrap { justify-content: flex-start; padding-top: var(--home-top); }
@@ -681,7 +681,9 @@
     .btn, .pick span, .tab, .ref, .voice-btn, .theme-toggle { transition: background-color .15s, border-color .15s, color .15s, box-shadow .15s, transform .15s; }
     .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(37, 110, 244, .36); }
     .btn-quiet:hover:not(:disabled) { border-color: var(--primary); background: var(--primary-wash); color: var(--primary-ink); }
-    .modes button[aria-pressed="false"]:hover { color: var(--primary-ink); }
+    .modes button[aria-pressed="false"]:hover { background: var(--primary-wash); color: var(--primary-ink); box-shadow: inset 0 0 0 1.5px var(--primary); }
+    .modes:has(button[aria-pressed="true"]:hover)::before { background: var(--primary-ink); box-shadow: 0 6px 18px rgba(37, 110, 244, .45); }
+    [data-theme="dark"] .modes:has(button[aria-pressed="true"]:hover)::before { background: #5b93f7; }
     .pick:hover input:not(:checked) + span { border-color: var(--primary); color: var(--primary-ink); }
     .tab[aria-selected="false"]:hover { background: var(--primary-wash); color: var(--primary-ink); }
     .voice-btn:hover:not(:disabled):not([aria-pressed="true"]) { background: var(--primary-wash); }
