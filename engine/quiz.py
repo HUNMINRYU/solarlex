@@ -8,39 +8,41 @@ import kb
 
 QUIZ_FILE = config.DATA / "quiz.json"
 EXCLUDED_FILE = config.DATA / "quiz_excluded.json"
-CHOICES = 4
 NUMBER = re.compile(r"\d[\d,]*")
 MEASURED = re.compile(r"\d[\d,]*\s*(만원|천원|원|세|일|개월|년|시간|분|퍼센트|%|미터|명|회|배)|\d+분의\s*\d+")
 CHOICES = ["O", "X"]
 
-MAX_STATEMENT = 55
+MAX_STATEMENT = 45
 
 SYSTEM = (
     "너는 서울시 조례로 누구나 가볍게 푸는 생활 상식 OX 퀴즈를 만드는 사람이다. 주어진 조항 하나로 OX 문항 1개의 재료를 만든다.\n"
     "- 시민이 일상에서 겪을 만한 내용(요금, 할인, 과태료, 나이 기준, 이용 시간, 신청 기한 등)일 때만 만든다. "
-    "위원회 구성·임기, 행정 계획, 위탁·허가 절차, 시설 설치 기준처럼 공무원이나 사업자에게만 해당하는 조항이면 statement를 빈 문자열로 낸다.\n"
-    "- statement: 조항 내용과 일치하는 참인 문장 하나. 친구에게 말하듯 쉬운 해요체로 55자 안에 쓴다"
-    "(예: '서울 금연구역에서 담배를 피우면 과태료가 10만원이에요.'). 법령 용어는 일상 말로 바꾸고"
-    "(예: 부과·징수한다 → 내야 해요, 경형자동차 → 경차), 조·항 번호와 '조례에 따르면' 같은 말은 쓰지 않는다.\n"
-    "- statement에는 조항 원문에 나오는 숫자 표현 하나가 정확히 한 번 들어가야 한다. 숫자는 원문과 같아야 하고 다른 숫자는 넣지 않는다. "
-    "표기는 쉽게 바꿔도 된다(100분의 50 → 50%).\n"
-    "- 범위 표현(이상, 이하, 미만, 초과, 이내, 까지)은 원문과 같은 뜻으로 쓴다('10일 이상'을 '10일 넘게'로 바꾸지 않는다). "
-    "누가 하는 일인지(구청장, 시장 등), 어느 조례 이야기인지, 가산금처럼 원래 요금에 더 내는 돈이면 그 점을 빠뜨리지 않는다. "
-    "원문이 '할 수 있다'이면 '~할 수 있어요'로 쓴다.\n"
-    "- value: statement에 들어간 그 숫자 표현을 글자 그대로 옮긴 것(예: 10만원, 5일, 50%).\n"
-    "- wrong_value: value와 같은 단위·형식의 그럴듯한 다른 값. 이 조항 원문 어디에도 나오지 않는 숫자여야 하고, value 자리에 바꿔 넣으면 문장이 분명히 틀린 말이 되어야 한다. "
-    "범위 표현이 붙은 값은 바꾼 문장이 원문 규정에 여전히 포함되지 않는 쪽으로 고른다"
-    "(원문이 '3회 이상 체납하면 거부할 수 있다'일 때 5회는 여전히 맞는 말이 되므로 2회로, '100원 미만은 버린다'일 때 50원은 여전히 맞으므로 500원으로).\n"
-    "- explanation: 실제로는 어떻게 정해져 있는지 쉬운 해요체로 한두 문장, 80자 안에 쓴다. 조항 원문에 있는 내용만 쓰고, "
-    "비율은 %로 쓰고(100분의 50 → 50%) 단수·부과·징수 같은 법령 용어는 일상 말로 바꾼다. 조·항 번호나 참·거짓·정답이라는 말은 쓰지 않는다(예: '금연구역에서 담배를 피우면 과태료 10만원을 내야 해요.').\n"
-    "- 조항만으로 만들 수 없으면 statement를 빈 문자열로 낸다. 결과는 JSON으로 낸다.")
+    "위원회 구성·임기, 행정 계획, 위탁·허가 절차, 시설 설치 기준처럼 공무원이나 사업자에게만 해당하는 조항이면 true를 빈 문자열로 낸다.\n"
+    "- true: 조항 내용과 맞는 문장 하나. 중학생도 바로 알아듣게, 친구에게 말하듯 짧은 해요체로 45자 안에 쓴다. "
+    "조문을 옮겨 적지 말고 생활 속 장면으로 풀어 쓴다"
+    "(예: '서울 금연구역에서 담배 피우다 걸리면 과태료 10만원이에요.', '서울에서 강아지는 태어난 지 2개월이 지나면 등록해야 하는 대상이에요.'). "
+    "법령 용어(부과·징수, 감면, 단수, 경형자동차, 소유자등)는 일상 말(내야 해요, 깎아 줘요, 잔돈, 경차, 주인)로 바꾸고, "
+    "조·항 번호와 조례 이름, '조례에 따르면' 같은 말은 쓰지 않는다.\n"
+    "- false: true와 같은 장면에서 핵심 사실 하나(금액, 나이, 기간, 비율, 되는지 안 되는지)만 바꿔 분명히 틀린 말로 만든 문장. 말투와 길이는 true와 같게 쓴다. "
+    "조항 원문과 견주면 누가 봐도 틀려야 한다. 범위가 붙은 값은 바꿔도 여전히 맞는 말이 되지 않게 고른다"
+    "(원문이 '3회 이상 밀리면 거절할 수 있다'일 때 '5회 이상'은 여전히 맞으므로 쓰지 않는다).\n"
+    "- 두 문장 모두 원문의 뜻을 바꾸지 않는다. '이상·이하·미만'의 경계, '할 수 있다'와 '해야 한다'의 차이, 누가 대상인지(아이 본인인지 함께 간 어른인지), "
+    "원칙과 예외를 뒤섞지 않는다. 예외일 때만 해당하는 내용을 늘 그런 것처럼 쓰지 않는다. "
+    "'이상'은 '7일 이상', '3번 이상'처럼 그대로 쓰고 '넘게', '넘으면'으로 바꾸지 않는다. "
+    "원문이 '지정할 수 있다', '할 수 있다'이면 이미 그렇게 되어 있는 것처럼 쓰지 않고 '~할 수 있어요'로 쓴다.\n"
+    "- explanation: 실제로는 어떻게 되어 있는지 쉬운 해요체로 한두 문장, 70자 안에 쓴다. 조항 원문에 있는 내용만 쓰고 비율은 %로 쓴다. "
+    "법령 용어, 조·항 번호, 참·거짓·정답이라는 말은 쓰지 않는다(예: '금연구역에서 담배를 피우면 과태료 10만원을 내야 해요.').\n"
+    "- 조항만으로 만들 수 없으면 true를 빈 문자열로 낸다. 결과는 JSON으로 낸다.")
 SCHEMA = {"type": "json_schema", "json_schema": {"name": "quiz_item", "strict": True, "schema": {
-    "type": "object", "required": ["statement", "value", "wrong_value", "explanation"], "additionalProperties": False,
-    "properties": {"statement": {"type": "string"}, "value": {"type": "string"}, "wrong_value": {"type": "string"},
-                   "explanation": {"type": "string"}}}}}
+    "type": "object", "required": ["true", "false", "explanation"], "additionalProperties": False,
+    "properties": {"true": {"type": "string"}, "false": {"type": "string"}, "explanation": {"type": "string"}}}}}
+ASK = ("퀴즈 문장이 다루는 내용을 시민이 서울시 조례 상담 창구에 물어볼 질문 한 문장으로 바꾼다. "
+       "'서울'을 넣어 쉬운 말로 쓰고, 답이 되는 숫자는 넣지 않는다(예: '서울 금연구역에서 담배를 피우면 과태료가 얼마인가요?'). 결과는 JSON으로 낸다.")
+ASK_SCHEMA = {"type": "json_schema", "json_schema": {"name": "quiz_ask", "strict": True, "schema": {
+    "type": "object", "required": ["question"], "additionalProperties": False, "properties": {"question": {"type": "string"}}}}}
 JUDGE = ("조항 원문만 근거로 문장을 판정한다. 문장이 원문 규정과 같거나, 숫자가 달라도 원문 규정에서 논리적으로 따라 나오는 말이면 O"
          "(원문이 '3회 이상이면 거부할 수 있다'일 때 '5회 이상이면 거부할 수 있다'는 O). "
-         "원문 규정과 어긋나 반드시 틀린 말이면 X, 원문으로 가릴 수 없거나 읽기에 따라 달라지면 ?를 answer로 낸다. 결과는 JSON으로 낸다.")
+         "원문 규정과 어긋나 반드시 틀린 말이면 X, 원문으로 가릴 수 없거나 읽기에 따라 달라지면 ?를 answer로 낸다. '이상'을 '넘게'로 쓴 것처럼 경계가 원문과 달라졌거나, '할 수 있다'를 이미 정해진 것처럼 쓴 문장은 ?로 낸다. 결과는 JSON으로 낸다.")
 JUDGE_SCHEMA = {"type": "json_schema", "json_schema": {"name": "quiz_judge", "strict": True, "schema": {
     "type": "object", "required": ["answer"], "additionalProperties": False,
     "properties": {"answer": {"type": "string", "enum": ["O", "X", "?"]}}}}}
@@ -56,16 +58,15 @@ def candidates():
     for c in chunks:
         item = by_label.setdefault(c["label"], {**c, "text": ""})
         item["text"] = (item["text"] + "\n" + c["text"]).strip()
-    return [c for c in by_label.values() if MEASURED.search(c["text"])]
+    reviewed = {r["article"] for r in json.loads(kb.TARGET_REVIEW.read_text(encoding="utf-8")) if r["keep"]}
+    return [c for c in by_label.values() if MEASURED.search(c["text"]) or any(c["label"] == a or c["label"].startswith(a + " ") for a in reviewed)]
 
 
 def _grounded(item, clause):
-    statement, value, wrong = item["statement"], item["value"].strip(), item["wrong_value"].strip()
+    true, false = item["true"].strip(), item["false"].strip()
     known = _numbers(clause["text"])
-    written = re.sub(r"\s", "", clause["text"])
-    return bool(value) and len(statement) <= MAX_STATEMENT and statement.count(value) == 1 and bool(_numbers(value)) and _numbers(statement) <= known \
-        and bool(_numbers(wrong)) and re.sub(r"\s", "", wrong) not in written and _numbers(wrong) != _numbers(value) \
-        and _numbers(item["explanation"]) <= known | _numbers(clause["label"])
+    return bool(true) and bool(false) and true != false and max(len(true), len(false)) <= MAX_STATEMENT \
+        and _numbers(true) <= known and _numbers(item["explanation"]) <= known
 
 
 def _judged(statement, clause):
@@ -75,6 +76,11 @@ def _judged(statement, clause):
     return json.loads(raw)["answer"]
 
 
+def _ask(statement):
+    import upstage
+    return json.loads(upstage.chat([{"role": "system", "content": ASK}, {"role": "user", "content": statement}], response_format=ASK_SCHEMA))["question"].strip()
+
+
 def _item(clause):
     import upstage
     raw = upstage.chat([{"role": "system", "content": SYSTEM}, {"role": "user", "content": f"{clause['label']}\n{clause['text'][:1500]}"}],
@@ -82,12 +88,11 @@ def _item(clause):
     item = json.loads(raw)
     if not _grounded(item, clause):
         return None
-    true = item["statement"].strip()
-    false = true.replace(item["value"].strip(), item["wrong_value"].strip())
+    true, false = item["true"].strip(), item["false"].strip()
     if _judged(true, clause) != "O" or _judged(false, clause) != "X":
         return None
     return {"label": clause["label"], "law": clause["law"], "source_url": clause["source_url"], "effective_date": clause["effective_date"],
-            "text": clause["text"], "true": true, "false": false, "explanation": item["explanation"].strip()}
+            "text": clause["text"], "true": true, "false": false, "explanation": item["explanation"].strip(), "ask": _ask(true)}
 
 
 def build():
@@ -117,7 +122,7 @@ def pick(count):
     out = []
     for item in picked[:count]:
         truth = random.choice(["true", "false"])
-        out.append({key: item[key] for key in ("label", "law", "source_url", "effective_date", "text", "explanation")}
+        out.append({key: item[key] for key in ("label", "law", "source_url", "effective_date", "text", "explanation", "ask")}
                    | {"question": item[truth], "choices": CHOICES, "answer": 0 if truth == "true" else 1})
     return out
 

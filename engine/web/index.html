@@ -1978,7 +1978,7 @@ function quizItem() {
       <p class="quiz-why">${esc(item.explanation)}</p>
       <details class="quiz-source"><summary>근거 원문 · ${esc(shortArticle(item.label, item.law))}</summary><p>${esc(item.text)}</p></details>`;
     const more = el("button", { type: "button", class: "btn btn-quiet" }, "이 내용 자세히 묻기");
-    more.onclick = () => { quizBox.close(); ask(item.question); };
+    more.onclick = () => { quizBox.close(); ask(item.ask); };
     form.querySelector(".quiz-actions").prepend(more);
     submit.textContent = last ? "결과 보기" : "다음 문제";
     submit.focus();
