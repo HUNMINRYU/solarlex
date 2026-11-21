@@ -1393,7 +1393,7 @@ function markChips(question) {
 
 // ---- 음성: 말로 묻기(녹음 → /demo/stt → 받아쓴 문장으로 바로 질문)와 답 듣기(/demo/tts). 서버에 음성 키가 없으면 버튼을 숨깁니다 ----
 const mic = $("#mic"), micLabel = $("#mic-label"), voiceBox = $("#voice-status");
-const MAX_RECORD_MS = 30000, QUIET_AFTER_SPEECH_MS = 1600, SPEECH_LEVEL = 0.04;
+const RECORD_MS = 60000, MAX_EXTENSIONS = 10, WARN_LEFT_MS = 30000, QUIET_AFTER_SPEECH_MS = 1600, SPEECH_LEVEL = 0.04;
 let voiceOn = false, recording = null, speaking = null;
 fetch("/health").then((r) => r.json()).then((h) => {
   voiceOn = Boolean(h.voice);
@@ -1422,31 +1422,47 @@ async function startRecording() {
   const audioContext = new AudioContext(), analyser = audioContext.createAnalyser();
   analyser.fftSize = 512;
   audioContext.createMediaStreamSource(stream).connect(analyser);
-  const wave = new Uint8Array(analyser.fftSize), started = Date.now();
-  const state = recording = { recorder, cancelled: false, heard: false, quietSince: null };
+  const wave = new Uint8Array(analyser.fftSize);
+  const state = recording = { recorder, cancelled: false, heard: false, quietSince: null, deadline: Date.now() + RECORD_MS, extensions: 0, warned: false };
+  const LISTENING = "듣고 있어요. 말씀이 끝나면 바로 질문할게요.";
 
   const meter = el("span", { class: "meter", "aria-hidden": "true" }, "<i></i><i></i><i></i><i></i><i></i>");
   const left = el("span", { class: "left", "aria-hidden": "true" });
   const cancel = el("button", { type: "button", class: "btn btn-quiet" }, "취소");
   cancel.onclick = () => { state.cancelled = true; recorder.stop(); };
+  const extend = el("button", { type: "button", class: "btn btn-quiet" }, "시간 연장");
+  extend.onclick = () => {
+    state.deadline += RECORD_MS; state.extensions += 1; state.warned = false;
+    extend.hidden = state.extensions >= MAX_EXTENSIONS;
+    voiceBox.querySelector(".msg").textContent = "1분 더 들을게요. 말씀이 끝나면 바로 질문할게요.";
+  };
   mic.setAttribute("aria-pressed", "true"); micLabel.textContent = "말 끝내기";
-  voiceStatus("recording", "듣고 있어요. 말씀이 끝나면 바로 질문할게요.", [meter, left, cancel,
-    el("span", { class: "hint" }, "녹음한 음성은 글로 바꾸기 위해 OpenAI로 전송돼요. 개인정보는 말하지 않도록 주의해 주세요.")]);
+  voiceStatus("recording", LISTENING, [meter, left, extend, cancel,
+    el("span", { class: "hint" }, "한 번에 1분까지 듣고, 시간 연장을 누르면 1분씩 늘어나요. 녹음한 음성은 글로 바꾸기 위해 OpenAI로 전송돼요. 개인정보는 말하지 않도록 주의해 주세요.")]);
 
   const watch = () => {
     if (recording !== state || recorder.state !== "recording") return;
     analyser.getByteTimeDomainData(wave);
     let power = 0;
     for (const v of wave) power += ((v - 128) / 128) ** 2;
-    const level = Math.sqrt(power / wave.length), now = Date.now(), remaining = MAX_RECORD_MS - (now - started);
+    const level = Math.sqrt(power / wave.length), now = Date.now(), remaining = state.deadline - now;
     [...meter.children].forEach((bar, k) => { bar.style.transform = `scaleY(${Math.min(1, 0.15 + level * (4 + k % 3) * 2)})`; });
-    left.textContent = `0:${String(Math.max(0, Math.ceil(remaining / 1000))).padStart(2, "0")}`;
+    const seconds = Math.max(0, Math.ceil(remaining / 1000));
+    left.textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+    if (remaining <= WARN_LEFT_MS && !state.warned) {
+      state.warned = true;
+      voiceBox.querySelector(".msg").textContent = state.extensions < MAX_EXTENSIONS
+        ? "30초 남았어요. 더 필요하면 시간 연장을 눌러 주세요." : "30초 남았어요. 시간이 끝나면 여기까지 들은 내용으로 질문할게요.";
+    }
     if (level > SPEECH_LEVEL) { state.heard = true; state.quietSince = null; }
     else if (state.heard) { state.quietSince ??= now; if (now - state.quietSince > QUIET_AFTER_SPEECH_MS) return recorder.stop(); }
     if (remaining <= 0) return recorder.stop();
     requestAnimationFrame(watch);
   };
-  setTimeout(() => { if (recorder.state === "recording") recorder.stop(); }, MAX_RECORD_MS + 500);
+  const deadlineCheck = setInterval(() => {
+    if (recorder.state !== "recording") return clearInterval(deadlineCheck);
+    if (Date.now() > state.deadline + 500) recorder.stop();
+  }, 1000);
 
   recorder.ondataavailable = (e) => chunks.push(e.data);
   recorder.onstop = async () => {
