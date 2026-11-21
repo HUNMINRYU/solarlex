@@ -1914,7 +1914,7 @@ window.addEventListener("popstate", () => { const q = askedInAddress(); if (q) a
 const EXAMPLES = ["저 27살인데 서울시 청년 정책 대상에 들어가나요?", "첫 차로 경차를 샀는데 서울 공영주차장에서 할인되나요?", "서울시 청년 월세 지원금은 한 달에 얼마인가요?", "따릉이 1시간 이용요금이 얼마예요?", "서울 금연구역에서 담배 피우다 걸리면 과태료가 얼마예요?"];
 let exIdx = 0;
 const reloaded = performance.getEntriesByType("navigation")[0]?.type === "reload";
-if (askedInAddress() && reloaded) history.replaceState({}, "", location.pathname);
+if ((askedInAddress() || guideInAddress()) && reloaded) history.replaceState({}, "", location.pathname);
 else if (askedInAddress()) ask(askedInAddress());
 else if (guideInAddress()) openGuide();
 (function typeExamples() {
