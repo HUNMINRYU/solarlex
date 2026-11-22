@@ -385,6 +385,17 @@ def link_annexes(hits, limit=2):
     return hits + added
 
 
+STATUTE_TERMS = {"월세": "차임", "보증금": "주택임차보증금", "따릉이": "공공자전거", "할인": "감면", "주차비": "주차요금", "벌금": "과태료"}
+
+
+def _in_statute_terms(question):
+    restated = question
+    for plain, term in STATUTE_TERMS.items():
+        if term not in question:
+            restated = restated.replace(plain, term)
+    return restated
+
+
 def retrieve_expanded(question, queries=None, top_k=config.TOP_K, per_query=config.EXPAND_PER_QUERY):
     """원 질문 검색 결과에 하위 검색어 결과를 덧붙입니다. 조항 중복은 제거합니다."""
     hits = retrieve(question, top_k)
@@ -393,7 +404,8 @@ def retrieve_expanded(question, queries=None, top_k=config.TOP_K, per_query=conf
     if queries is None:
         queries = expand_queries(question, hits if config.EXPAND_WITH_HITS else None)["queries"]
     seen = {h["label"] for h in hits}
-    for q in queries:
+    restated = _in_statute_terms(question)
+    for q in list(queries) + [restated] * (restated != question):
         for h in retrieve(q, per_query):
             if h["label"] not in seen:
                 seen.add(h["label"])
@@ -909,8 +921,7 @@ def _guide_clauses(question, kind, cited, hits):
         picked = _delegating_among_cited(cited, hits)
         if picked:
             return picked, hits
-    picked, more = _establishing_clauses(question, cited, hits)
-    return (picked, more) if picked else _establishing_clauses(question, cited, hits)
+    return _establishing_clauses(question, cited, hits)
 
 
 def _answer_once(question):
