@@ -909,7 +909,8 @@ def _guide_clauses(question, kind, cited, hits):
         picked = _delegating_among_cited(cited, hits)
         if picked:
             return picked, hits
-    return _establishing_clauses(question, cited, hits)
+    picked, more = _establishing_clauses(question, cited, hits)
+    return (picked, more) if picked else _establishing_clauses(question, cited, hits)
 
 
 def _answer_once(question):
