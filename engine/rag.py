@@ -22,6 +22,8 @@ import numpy as np
 import config
 import kb
 
+log = logging.getLogger("uvicorn.error")
+
 UNKNOWN = {"answer": "확인 불가", "citation": [], "source_url": "", "effective_date": ""}
 MAX_CITATIONS = 3
 FIRST_SENTENCE = re.compile(r"(?<=[.다요])\s")
@@ -67,7 +69,8 @@ def fix_yes_no(question, answer):
     if NEG_END.search(first) if head == first else NEG_HEAD.search(head):
         return "아니요" + answer[1:]
     return answer
-DELEGATES_STRONG = re.compile(r"따로 정[한하]|규칙으로 정|조례로 (따로 )?정|고시[를에] 따|시장이 정한다"
+DELEGATES_STRONG = re.compile(r"(따로|별도로) 정[한하할]|규칙으로 정|규칙이 정하는 바|조례로 (따로 )?정|고시[를에] 따"
+                              r"|(시장|구청장|위원장|관리청)이 정[한할]|(계획으로|범위 안에서|책임이 있는 자가) 정한다"
                               r"|(법|영|령|규칙)\s?제\d+조[^.]{0,20}별표\s?\d*[와과] 같다")   # 조례 자신의 '별표 2와 같다'는 위임이 아님
 DELEGATES = re.compile(DELEGATES_STRONG.pattern + r"|정하는 바에 따|준용|(법|영|령|규칙|고시|조례)」?\s?(제\d+조[^.]{0,15})?에 따른다")
 # '뜻은 다음과 같다'(정의 조항)까지 걸려 함정 X34가 제2조 인용으로 뚫린 적이 있어 '…와 같다'는 뺐습니다.
@@ -80,6 +83,21 @@ _cache = {}
 def _bigrams(text):
     t = re.sub(r"\s+", "", text)
     return [t[i:i + 2] for i in range(len(t) - 1)]
+
+
+def _chat_json(messages, schema, tries=3, **options):
+    import upstage
+    for _ in range(tries - 1):
+        try:
+            return json.loads(upstage.chat(messages, response_format=schema, **options))
+        except json.JSONDecodeError:
+            pass
+    return json.loads(upstage.chat(messages, response_format=schema, **options))
+
+
+def _abstain(reason, retry):
+    log.info("abstain: %s", reason)
+    return dict(UNKNOWN), [], retry
 
 
 def _load(unit=None):
@@ -224,13 +242,12 @@ def expand_queries(question, hits=None):
     hits를 주면(config.EXPAND_WITH_HITS) 멘토가 말한 흐름대로 1차 검색에서 찾은 조항 목록을 함께 보여 주고,
     그 조항들을 보고 빠진 조항을 찾을 검색어를 다시 만들게 합니다.
     """
-    import upstage
     user = question
     if hits:
         found = "\n".join(f"- {h['label']}: {h['text'].split(chr(10), 1)[-1][:80]}" for h in hits)
         user = (f"[질문]\n{question}\n\n[1차 검색에서 찾은 조항]\n{found}\n\n"
                 "위 조항만으로 답하기에 모자라거나 빠진 조항(원칙·예외·감면 중복·과태료·절차·요금표)을 찾을 검색어를 만든다.")
-    raw = upstage.chat([
+    reading = _chat_json([
         {"role": "system", "content": (
             "너는 서울특별시 조례 검색 도우미다. 질문에 답하려면 찾아야 할 조례 조항을 떠올리고, "
             "그 조항을 찾기 위한 검색어를 조문에 쓰일 법조문 용어로 2~3개 만든다. "
@@ -244,8 +261,7 @@ def expand_queries(question, hits=None):
             "앞으로 바뀔 규정('다음 달부터 어떻게 바뀌나')을 물으면 later다. "
             "결과는 JSON으로 낸다.")},
         {"role": "user", "content": user}],
-        response_format=EXPAND_SCHEMA)
-    reading = json.loads(raw)
+        EXPAND_SCHEMA)
     return {"asks_other_time": reading["rule_as_of"] != "now", "queries": [q for q in reading["queries"] if q.strip()]}
 
 
@@ -260,9 +276,8 @@ def pick_delegating(question, cands):
 
     답변 프롬프트 안에서는 근거 12~15개 사이에서 옆 조항을 고르는 일이 잦아, 후보만 따로 보여 주고 묻습니다.
     """
-    import upstage
     listing = "\n".join(f"[{i}] {h['label']}\n{h['text'].split(chr(10), 1)[-1][:400]}" for i, h in enumerate(cands, 1))
-    raw = upstage.chat([
+    got = _chat_json([
         {"role": "system", "content": (
             "너는 서울특별시 조례 조항을 가려내는 도우미다. 아래 [후보]는 모두 세부 내용을 시장·규칙·고시·다른 법령에 맡긴 조항이다. "
             "[질문]이 묻는 세부 내용(금액·비율·기준·크기·시간·절차 등)을 맡긴 조항의 번호를 고른다. "
@@ -273,12 +288,8 @@ def pick_delegating(question, cands):
             "과태료·사용료·요금의 부과 기준 전체를 다른 법령의 별표나 규칙에 맡긴 조항은, 질문이 그 조례 분야(공원·주차장·금연구역 등)에서 생긴 과태료·사용료·요금의 금액을 물으면 대상이 같다. "
             "대상이 다른 조항(주제는 비슷하지만 다른 시설·제도·요금에 관한 것)은 고르지 않는다. 보통 하나이고, 꼭 맞는 조항이 없으면 ids를 빈 배열로 둔다. 결과는 JSON으로 낸다.")},
         {"role": "user", "content": f"[질문]\n{question}\n\n[후보]\n{listing}"}],
-        response_format=PICK_SCHEMA)
-    try:
-        got = json.loads(raw)
-        ids, target = got["ids"], got.get("target", "")
-    except (json.JSONDecodeError, KeyError, TypeError):
-        return [], ""
+        PICK_SCHEMA)
+    ids, target = got["ids"], got["target"]
     return [cands[i - 1] for i in dict.fromkeys(ids) if isinstance(i, int) and 1 <= i <= len(cands)][:2], target
 
 
@@ -294,9 +305,8 @@ ESTABLISHING_SCHEMA = {"type": "json_schema", "json_schema": {"name": "establish
 
 
 def clauses_establishing(question, cands):
-    import upstage
     listing = "\n".join(f"[{i}] {h['label']}\n{h['text'].split(chr(10), 1)[-1][:400]}" for i, h in enumerate(cands, 1))
-    raw = upstage.chat([
+    got = _chat_json([
         {"role": "system", "content": (
             "너는 서울특별시 조례 조항을 가려내는 도우미다. [질문]은 어떤 대상의 구체 값(금액·한도·기준·시간·절차 등)을 묻는데, 그 값은 조례에 없다. "
             "asked에 질문이 값을 묻는 대상(그 지원·요금·사용료·수당·배상·제도)을 짧게 적고, term에는 그 대상을 조문에 쓰일 용어로 바꾼 검색어를 적는다"
@@ -307,13 +317,9 @@ def clauses_establishing(question, cands):
             "주제만 비슷하고 대상이 다르면 false다: 어떤 행위의 과태료↔그 행위의 예방 교육, 위로금↔이미 낸 요금의 반환이나 감면, 지원금↔과태료, "
             "질문이 전제한 사정(정전, 사고, 분쟁)을 조항이 다루지 않는 경우, 연락처·전화번호·운영 시간표 같은 안내 정보. 결과는 JSON으로 낸다.")},
         {"role": "user", "content": f"[질문]\n{question}\n\n[후보]\n{listing}"}],
-        response_format=ESTABLISHING_SCHEMA)
-    try:
-        got = json.loads(raw)
-        same = [c["id"] for c in got["candidates"] if c["same_as_asked"]]
-        return [cands[i - 1] for i in dict.fromkeys(same) if 1 <= i <= len(cands)][:2], got["term"]
-    except (json.JSONDecodeError, KeyError, TypeError):
-        return [], ""
+        ESTABLISHING_SCHEMA)
+    same = [c["id"] for c in got["candidates"] if c["same_as_asked"]]
+    return [cands[i - 1] for i in dict.fromkeys(same) if 1 <= i <= len(cands)][:2], got["term"]
 
 
 def complete_articles(hits, limit=4):
@@ -665,35 +671,23 @@ CHECK_SYSTEM = """너는 조례 답변 검토자다. 질문, 답, 주장마다 �
 
 def self_check(question, out, hits):
     """주장별 뒷받침 확인과 질문 부분 충족 확인을 한 번의 호출로 합니다(2주차 강의 자체 평가·검증)."""
-    import upstage
     lines = []
     for n, c in enumerate(out.get("claims", []), 1):
         i = c.get("evidence_id", 0)
         src = hits[i - 1] if 1 <= i <= len(hits) else {"label": "없음", "text": ""}
         lines.append(f"[주장 {n}] {c['statement']}\n  근거: {src['label']}\n  {src['text'][:1200]}")
-    raw = upstage.chat(
+    return _chat_json(
         [{"role": "system", "content": CHECK_SYSTEM},
          {"role": "user", "content": f"[질문]\n{question}\n\n[답]\n{out.get('answer', '')}\n\n" + "\n\n".join(lines)}],
-        response_format=CHECK_SCHEMA)
-    return json.loads(raw)
+        CHECK_SCHEMA)
 
 
 def _generate(question, hits, note=None):
-    import upstage
     user = f"[근거]\n{_context(hits)}\n\n[질문]\n{question}"
     if note:
         user += f"\n\n[주의]\n{note}"
-    def ask():
-        return upstage.chat(
-            [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}],
-            response_format=SCHEMA, reasoning_effort=config.ANSWER_REASONING or None)
-
-    for _ in range(2):   # 답이 중간에 잘려 JSON이 깨지면 다시 부릅니다(dev D09). 두 번 연달아 깨진 적이 있어 세 번까지(X03, 2026-11-19)
-        try:
-            return json.loads(ask())
-        except json.JSONDecodeError:
-            pass
-    return json.loads(ask())
+    return _chat_json([{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}], SCHEMA,
+                      reasoning_effort=config.ANSWER_REASONING or None)
 
 
 def _classified(question, hits, note=None):
@@ -922,10 +916,10 @@ def _answer_once(question):
     import upstage
     reading = expand_queries(question) if config.USE_EXPAND and not config.EXPAND_WITH_HITS else None
     if reading and reading["asks_other_time"]:
-        return dict(UNKNOWN), [], False
+        return _abstain("과거·미래 시점 질문", False)
     hits = retrieve_expanded(question, reading and reading["queries"])
     if config.USE_VERIFY and hits and hits[0]["cos"] is not None and hits[0]["cos"] < config.MIN_SCORE:
-        return dict(UNKNOWN), [], False
+        return _abstain("검색 점수 미달", False)
     if config.USE_REFERENCE:
         hits = hits + reference_hits(question)
 
@@ -967,7 +961,7 @@ def _answer_once(question):
             if config.USE_CLAIM_CHECK and kept and len(ok) == len(out["claims"]):
                 out["claims"] = kept
     if out["scope"] != "seoul":
-        return dict(UNKNOWN), [], False
+        return _abstain(f"범위 밖({out['scope']})", False)
 
     used, refs = _cited_clauses(out, hits)
     if out["kind"] != "answer" and used:
@@ -980,11 +974,11 @@ def _answer_once(question):
             if again["kind"] in GUIDE_KINDS:
                 out = again
     if not used or out["kind"] == "none":
-        return dict(UNKNOWN), [], True
+        return _abstain(f"인용할 조항 없음(kind {out['kind']})", True)
     if reference_only_numbers(out["answer"], question, hits):
-        return dict(UNKNOWN), [], True
+        return _abstain("참고 근거에만 있는 숫자", True)
     if config.USE_VERIFY and upstage.groundedness(_context(used + refs), out["answer"]) == "notGrounded":
-        return dict(UNKNOWN), [], True
+        return _abstain("근거 불일치 판정", True)
 
     citation = list(dict.fromkeys(h["label"] for h in used))[:MAX_CITATIONS]
     used = [h for h in used if h["label"] in citation]
